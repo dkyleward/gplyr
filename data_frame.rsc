@@ -4,7 +4,11 @@ Runs through all the methods and writes out results
 */
 Macro "test"
 
+  // Input files used in some tests
   dir = "C:\\projects/data_frame/unit_test_data"
+  csv_file = dir + "/example.csv"
+  bin_file = dir + "/example.bin"
+  mtx_file = dir + "/example.mtx"
 
   // Create data frame
   df = CreateObject("df")
@@ -34,7 +38,6 @@ Macro "test"
   // test read_view
   df = null
   df = CreateObject("df")
-  csv_file = dir + "/example.csv"
   view = OpenTable("view", "CSV", {csv_file})
   df.read_view(view)
   CloseView(view)
@@ -53,7 +56,6 @@ Macro "test"
   end
   df = null
   df = CreateObject("df")
-  bin_file = Substitute(csv_file, ".csv", ".bin", )
   df.read_bin(bin_file)
   for a = 1 to answer.length do
     if df.ID[a] <> answer[a] then Throw("test: read_bin failed")
@@ -62,12 +64,23 @@ Macro "test"
   // test read_mtx (and read_cur)
   df = null
   df = CreateObject("df")
-  mtx_file = dir + "/example.mtx"
   df.read_mtx(mtx_file)
   answer = {1, 2, 3, 4}
   for a = 1 to answer.length do
     if df.Value[a] <> answer[a] then Throw("test: read_view failed")
   end
+
+  // test select
+  df = null
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  df = df.select("Data")
+  answer_length = 1
+  answer_name = "Data"
+  colnames = df.colnames()
+  if colnames.length <> answer_length or colnames[1] <> answer_name
+    then Throw("test: select failed")
+
 
   ShowMessage("Passed Tests")
 EndMacro
@@ -342,5 +355,37 @@ Class "df"
     self.read_cur(mtxcur)
 
   endItem
+
+  /*
+  Like dply or SQL "select", returns a table with only
+  the columns listed in "fields". Unlike other methods,
+  it returns a new object, which must be captured in a
+  new variable. e.g.:
+
+  new_df = df.select("ID")
+
+  fields:
+    String or Array of strings
+    fields to keep in the data frame
+  */
+
+  Macro "select" (fields) do
+
+    // Argument checking and type handling
+    if fields = null then Throw("select: no fields provided")
+    if TypeOf(fields) = "string" then fields = {fields}
+
+    new_df = CreateObject("df")
+
+    a_colnames = self.colnames()
+    for f = 1 to a_colnames.length do
+      field = a_colnames[f]
+
+      if ArrayPosition(fields, {field}, ) <> 0
+        then new_df.mutate(field, self.(field))
+    end
+    return(new_df)
+  endItem
+
 
 endClass
