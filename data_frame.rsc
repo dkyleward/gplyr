@@ -27,7 +27,7 @@ Macro "test"
   end
 
   // test write_csv
-  df.write_csv("C:\\test.csv")
+  df.write_csv("C:\\Users/warddk/Desktop/Scratch/test.csv")
 
 EndMacro
 
@@ -85,23 +85,23 @@ Class "df"
   Macro "check" do
 
     // Convert all columns to vectors and check length
-    cols = self.colnames()
-    for i = 1 to cols.length do
-      col = cols[i]
+    colnames = self.colnames()
+    for i = 1 to colnames.length do
+      colname = colnames[i]
 
       // Type check
-      type = TypeOf(self.(col))
+      type = TypeOf(self.(colname))
       if type <> "vector" then do
-        if type = "array" then self.(col) = A2V(self.(col))
-        else Throw("check: '" + col + "' is neither an array nor vector")
+        if type = "array" then self.(colname) = A2V(self.(colname))
+        else Throw("check: '" + colname + "' is neither an array nor vector")
       end
 
       // Length check
       if i = 1 then do
-        length = self.(col).length
+        length = self.(colname).length
       end else do
-        if length <> self.(col).length then do
-          Throw("check: '" + col + "' has different length than first column")
+        if length <> self.(colname).length then do
+          Throw("check: '" + colname + "' has different length than first column")
         end
       end
     end
@@ -113,42 +113,52 @@ Class "df"
     self.check()
   endItem
 
-  Macro "write_csv" (file) do
+  /*
+  file
+    String
+    full path of file
+
+  append
+    True/False
+    Whether to append to an existing csv (defaults to false)
+  */
+  Macro "write_csv" (file, append) do
 
     // Check for required arguments
     if file = null then do
       Throw("write_csv: no file provided")
     end
+    else if Right(file, 3) <> "csv" then do
+      Throw("write_csv: file must be a csv")
+    end
 
     // Check validity of table
     self.check()
-
-    // Check that the file name ends in CSV
-    if Right(file, 3) <> "csv" then do
-      Throw("Write Table: File must be a CSV")
-    end
 
     // Open a csv file for writing
     if append then file = OpenFile(file, "a")
     else file = OpenFile(file, "w")
 
     // Write the row of column names
-    for i = 1 to self.length do
-      if i = 1 then firstLine = self[i][1]
-      else firstLine = firstLine + "," + self[i][1]
+    colnames = self.colnames()
+    for i = 1 to colnames.length do
+      if i = 1 then firstLine = colnames[i]
+      else firstLine = firstLine + "," + colnames[i]
     end
     WriteLine(file, firstLine)
 
     // Write each remaining row
-    for r = 1 to self[1][2].length do
+    for r = 1 to self.nrow() do
       line = null
-      for c = 1 to self.length do
-        type = self[c][2].type
+      for c = 1 to colnames.length do
+        vec = self.(colnames[c])
+        type = vec.type
 
-        if type = "string" then strVal = self[c][2][r]
-        else strVal = String(self[c][2][r])
-        if c = 1 then line = strVal
-        else line = line + "," + strVal
+        strVal = if type = "string" then vec[r]
+        else String(vec[r])
+
+        line = if c = 1 then strVal
+        else line + "," + strVal
       end
       WriteLine(file, line)
     end
