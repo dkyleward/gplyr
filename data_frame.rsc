@@ -4,6 +4,8 @@ Runs through all the methods and writes out results
 */
 Macro "test"
 
+  dir = "C:\\projects/data_frame/unit_test_data"
+
   // Create data frame
   df = CreateObject("df")
 
@@ -27,12 +29,12 @@ Macro "test"
   end
 
   // test write_csv
-  df.write_csv("C:\\Users/warddk/Desktop/Scratch/test.csv")
+  //df.write_csv(dir + "/write_csv output.csv")
 
   // test read_view
   df = null
   df = CreateObject("df")
-  csv_file = "C:\\projects/data_frame/unit_test_data/example.csv"
+  csv_file = dir + "/example.csv"
   view = OpenTable("view", "CSV", {csv_file})
   df.read_view(view)
   CloseView(view)
@@ -57,6 +59,17 @@ Macro "test"
     if df.ID[a] <> answer[a] then Throw("test: read_bin failed")
   end
 
+  // test read_mtx (and read_cur)
+  df = null
+  df = CreateObject("df")
+  mtx_file = dir + "/example.mtx"
+  df.read_mtx(mtx_file)
+  answer = {1, 2, 3, 4}
+  for a = 1 to answer.length do
+    if df.Value[a] <> answer[a] then Throw("test: read_view failed")
+  end
+
+  ShowMessage("Passed Tests")
 EndMacro
 
 /*
@@ -196,6 +209,7 @@ Class "df"
 
   /*
   Converts a view into a table object.
+  Useful if you want to specify a selection set.
   view (string): TC view name
   set (string): optional set name
   */
@@ -258,5 +272,75 @@ Class "df"
     DeleteFile(Substitute(file, ".csv", ".DCC", ))
   endItem
 
+  /*
+  Creates a table object from a matrix currency in long form.
+  Uses read_view().
+
+  Most of the time, you will want to use read_mtx(). Check both
+  and decide.
+  */
+
+  Macro "read_cur" (mtxcur) do
+
+    // Validate arguments
+    if mtxcur = null then Throw("read_mtx: no currency supplied")
+    if mtxcur.matrix.Name = null then do
+      Throw("read_mtx: mtxcur is not a valid matrix currency")
+    end
+
+    // Create a temporary bin file
+    file_name = GetTempFileName(".bin")
+
+    // Set the matrix index and export to a table
+    SetMatrixIndex(mtxcur.matrix, mtxcur.rowindex, mtxcur.colindex)
+    opts = null
+    opts.Tables = {mtxcur.corename}
+    CreateTableFromMatrix(mtxcur.matrix, file_name, "FFB", opts)
+
+    // Read exported table into view
+    self.read_bin(file_name)
+
+    // Clean up workspace
+    DeleteFile(file_name)
+    DeleteFile(Substitute(file_name, ".bin", ".DCB", ))
+  endItem
+
+  /*
+  Reads a matrix file.
+
+  file
+    String
+    Full file path of matrix
+
+  core
+    String
+    Core name to read - defaults to first core
+
+  ri and ci
+    String
+    Row and column indicies to use.  Defaults to the default
+    indices.
+  */
+
+  Macro "read_mtx" (file, core, ri, ci) do
+
+    // Check arguments and set defaults if needed
+    a_parts = ParseString(file, ".")
+    ext = a_parts[2]
+    if ext <> "mtx" then Throw("read_mtx: file not a .mtx")
+    mtx = OpenMatrix(file, )
+    if core = null then do
+      a_corenames = GetMatrixCoreNames(mtx)
+      core = a_corenames[1]
+    end
+    a_def_inds = GetMatrixIndex(mtx)
+    if ri = null then ri = a_def_inds[1]
+    if ci = null then ci = a_def_inds[2]
+
+    // Create matrix currency and read it in
+    mtxcur = CreateMatrixCurrency(mtx, core, ri, ci, )
+    self.read_cur(mtxcur)
+
+  endItem
 
 endClass
