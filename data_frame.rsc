@@ -29,6 +29,34 @@ Macro "test"
   // test write_csv
   df.write_csv("C:\\Users/warddk/Desktop/Scratch/test.csv")
 
+  // test read_view
+  df = null
+  df = CreateObject("df")
+  csv_file = "C:\\projects/data_frame/unit_test_data/example.csv"
+  view = OpenTable("view", "CSV", {csv_file})
+  df.read_view(view)
+  CloseView(view)
+  answer = {1, 2, 3}
+  for a = 1 to answer.length do
+    if df.ID[a] <> answer[a] then Throw("test: read_view failed")
+  end
+
+  // test read_csv and read_bin
+  df = null
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  answer = {1, 2, 3}
+  for a = 1 to answer.length do
+    if df.ID[a] <> answer[a] then Throw("test: read_csv failed")
+  end
+  df = null
+  df = CreateObject("df")
+  bin_file = Substitute(csv_file, ".csv", ".bin", )
+  df.read_bin(bin_file)
+  for a = 1 to answer.length do
+    if df.ID[a] <> answer[a] then Throw("test: read_bin failed")
+  end
+
 EndMacro
 
 /*
@@ -165,5 +193,70 @@ Class "df"
 
     CloseFile(file)
   endItem
+
+  /*
+  Converts a view into a table object.
+  view (string): TC view name
+  set (string): optional set name
+  */
+
+  Macro "read_view" (view, set) do
+
+    // Check for required arguments and
+    // that data frame is currently empty
+    if view = null then do
+      Throw("read_view: Required argument 'view' missing.")
+    end
+    if self.colnames() <> NULL
+      then Throw("read_view: data frame must be empty")
+
+    a_fields = GetFields(view, )
+    a_fields = a_fields[1]
+
+    for f = 1 to a_fields.length do
+      field = a_fields[f]
+
+      // When a view has too many rows, a "???" will appear in the editor
+      // meaning that TC did not load the entire view into memory.
+      // Creating a selection set will force TC to load the entire view.
+      if f = 1 then do
+        SetView(view)
+        qry = "Select * where nz(" + field + ") >= 0"
+        SelectByQuery("temp", "Several", qry)
+      end
+
+      self.(field) = GetDataVector(view + "|" + set, field, )
+    end
+    self.check()
+  endItem
+
+  /*
+  Simple wrappers to read_view that read bin and csv directly
+  */
+
+  Macro "read_bin" (file) do
+    // Check extension
+    ext = ParseString(file, ".")
+    ext = ext[2]
+    if ext <> "bin" then Throw("read_bin: file not a .bin")
+
+    view = OpenTable("view", "FFB", {file})
+    self.read_view(view)
+    CloseView(view)
+  endItem
+  Macro "read_csv" (file) do
+    // Check extension
+    a_parts = ParseString(file, ".")
+    ext = a_parts[2]
+    if ext <> "csv" then Throw("read_csv: file not a .csv")
+
+    view = OpenTable("view", "CSV", {file})
+    self.read_view(view)
+    CloseView(view)
+
+    // Remove the .DCC
+    DeleteFile(Substitute(file, ".csv", ".DCC", ))
+  endItem
+
 
 endClass
