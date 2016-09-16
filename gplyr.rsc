@@ -58,6 +58,16 @@ Macro "test"
     if df.tbl.ID[a] <> answer[a] then Throw("test: read_bin failed")
   end
 
+  // test write_csv
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  test_csv = dir + "/write_csv output.csv"
+  df.write_csv(test_csv)
+  df = CreateObject("df")
+  df.read_csv(test_csv)
+  DeleteFile(test_csv)
+  if df.ncol() <> 2 then Throw("test: write_csv failed")
+
   // test read_mtx (and read_cur)
   df = CreateObject("df")
   df.read_mtx(mtx_file)
@@ -102,7 +112,6 @@ Macro "test"
   df = CreateObject("df")
   df.read_csv(csv_file)
   df.filter("ID = 1")
-  Throw()
 
   ShowMessage("Passed Tests")
 EndMacro
