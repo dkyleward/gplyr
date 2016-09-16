@@ -465,12 +465,12 @@ Class "df" (tbl)
 
   Macro "create_view" do
 
-    // Convert the TABLE object into a CSV and open the view
+    // Convert the data frame object into a CSV and open the view
     tempFile = GetTempFileName(".bin")
     self.write_bin(tempFile)
-    view_name = OpenTable("bin", "FFB", {file_name}, )
+    view_name = OpenTable("bin", "FFB", {tempFile}, )
 
-    return({view_name, file_name})
+    return({view_name, tempFile})
   EndItem
 
   /*
