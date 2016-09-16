@@ -24,6 +24,12 @@ Macro "test"
   if df.nrow() <> 3 then Throw("test: nrow failed")
   if df.ncol() <> 2 then Throw("test: ncol failed")
 
+  // test copy
+  new_df = df.copy()
+  new_df.tbl.ID = null
+  colnames = df.colnames()
+  if colnames.length <> 2 then Throw("test: copy failed")
+
   // test addition
   df.mutate("addition", df.tbl.ID + df.tbl.HH)
   /*
@@ -136,6 +142,34 @@ Class "df" (tbl)
 
   Macro "is_empty" do
     if self.tbl = null then return("true") else return("false")
+  endItem
+
+  /*
+  This creates a complete copy of the data frame.  If you try
+
+  new_df = old_df
+
+  you simply get two variable names that point to the same object.
+  Instead, use
+
+  new_df = old_df.copy()
+  */
+
+  Macro "copy" do
+
+    new_df = CreateObject("df")
+    a_properties = GetObjectVariableNames(self)
+    for p = 1 to a_properties.length do
+      prop = a_properties[p]
+
+      type = TypeOf(self.(prop))
+      new_df.(prop) =
+        if type = "array" then CopyArray(self.(prop))
+        else if type = "vector" then CopyVector(self.(prop))
+        else self.(prop)
+    end
+
+    return(new_df)
   endItem
 
   /*
