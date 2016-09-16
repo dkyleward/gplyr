@@ -98,6 +98,10 @@ Macro "test"
   opts = null
   opts.Value = {"sum"}
   new_df = df.summarize(opts)
+  answer = {4, 6}
+  for a = 1 to answer.length do
+    if new_df.tbl.sum_Value[a] <> answer[a] then Throw("test: summarize() failed")
+  end
 
   ShowMessage("Passed Tests")
 EndMacro
