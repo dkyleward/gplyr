@@ -97,10 +97,10 @@ Macro "test"
   df.group_by("TO")
   opts = null
   opts.Value = {"sum"}
-  new_df = df.summarize(opts)
+  df.summarize(opts)
   answer = {4, 6}
   for a = 1 to answer.length do
-    if new_df.tbl.sum_Value[a] <> answer[a] then Throw("test: summarize() failed")
+    if df.tbl.sum_Value[a] <> answer[a] then Throw("test: summarize() failed")
   end
 
   ShowMessage("Passed Tests")
@@ -646,30 +646,27 @@ Class "df" (tbl)
 
   Macro "summarize" (agg) do
 
-    // copy this data frame to a new one to prevent modification
-    new_df = self.copy()
-
     // Remove fields that aren't listed for summary or grouping
-    for i = 1 to new_df.groups.length do
-      a_selected = a_selected + {new_df.groups[i]}
+    for i = 1 to self.groups.length do
+      a_selected = a_selected + {self.groups[i]}
     end
     for i = 1 to agg.length do
       a_selected = a_selected + {agg[i][1]}
     end
-    new_df.select(a_selected)
+    self.select(a_selected)
 
     // Convert the TABLE object into a view in order
     // to leverage GISDKs SelfAggregate() function
-    {view, file_name} = new_df.create_view()
+    {view, file_name} = self.create_view()
 
     // Create a field spec for SelfAggregate()
-    agg_field_spec = view + "." + new_df.groups[1]
+    agg_field_spec = view + "." + self.groups[1]
 
     // Create the "Additional Groups" option for SelfAggregate()
     opts = null
-    if new_df.groups.length > 1 then do
-      for g = 2 to new_df.groups.length do
-        opts.[Additional Groups] = opts.[Additional Groups] + {new_df.groups[g]}
+    if self.groups.length > 1 then do
+      for g = 2 to self.groups.length do
+        opts.[Additional Groups] = opts.[Additional Groups] + {self.groups[g]}
       end
     end
 
@@ -689,10 +686,9 @@ Class "df" (tbl)
     // Create the new view using SelfAggregate()
     agg_view = SelfAggregate("aggview", agg_field_spec, opts)
 
-    // Read the view into a new table object
-    agg_df = self.copy()
-    agg_df.tbl = null
-    agg_df.read_view(agg_view)
+    // Read the view back into the data frame
+    self.tbl = null
+    self.read_view(agg_view)
 
     // The field names from SelfAggregate() are messy.  Clean up.
     // The first fields will be of the format "GroupedBy(ID)".
@@ -701,16 +697,16 @@ Class "df" (tbl)
     // Then the stat fields in the form of "Sum(trips)"
 
     // Set group columns back to original name
-    for c = 1 to agg_df.groups.length do
-      agg_df.tbl[c][1] = agg_df.groups[c]
+    for c = 1 to self.groups.length do
+      self.tbl[c][1] = self.groups[c]
     end
     // Set the count field name
-    agg_df.tbl[agg_df.groups.length + 1][1] = "Count"
+    self.tbl[self.groups.length + 1][1] = "Count"
     // Remove the First() fields
-    agg_df.tbl = ExcludeArrayElements(
-      agg_df.tbl,
-      agg_df.groups.length + 2,
-      agg_df.groups.length
+    self.tbl = ExcludeArrayElements(
+      self.tbl,
+      self.groups.length + 2,
+      self.groups.length
     )
     // Change fields like Sum(x) to sum_x
     for i = 1 to agg.length do
@@ -722,12 +718,11 @@ Class "df" (tbl)
 
         current_field = Proper(stat) + "(" + field + ")"
         new_field = lower(stat) + "_" + field
-        agg_df.rename(current_field, new_field)
+        self.rename(current_field, new_field)
       end
     end
 
     CloseView(agg_view)
-    return(agg_df)
   EndItem
 
 endClass
