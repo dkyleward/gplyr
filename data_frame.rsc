@@ -115,7 +115,7 @@ Has the following methods
 Class "df" (tbl)
 
   init do
-    self.tbl = tbl
+    self.tbl = CopyArray(tbl)
     self.check()
   endItem
 
