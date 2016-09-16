@@ -65,7 +65,7 @@ Macro "test"
   df.read_mtx(mtx_file)
   answer = {1, 2, 3, 4}
   for a = 1 to answer.length do
-    if df.tbl.Value[a] <> answer[a] then Throw("test: read_view failed")
+    if df.tbl.value[a] <> answer[a] then Throw("test: read_view failed")
   end
 
   // test select
@@ -96,11 +96,11 @@ Macro "test"
   df.read_mtx(mtx_file)
   df.group_by("TO")
   opts = null
-  opts.Value = {"sum"}
+  opts.value = {"sum"}
   df.summarize(opts)
   answer = {4, 6}
   for a = 1 to answer.length do
-    if df.tbl.sum_Value[a] <> answer[a] then Throw("test: summarize() failed")
+    if df.tbl.sum_value[a] <> answer[a] then Throw("test: summarize() failed")
   end
 
   ShowMessage("Passed Tests")
@@ -620,11 +620,6 @@ Class "df" (tbl)
   the columns listed as grouping columns in the df.groups property.
   (Set grouping fields using group_by().)
 
-  Because a new data frame is returned, the function must be implimented
-  like this:
-
-  new_df = df.summarize(...)
-
   agg
     Options array listing field and aggregation info
     e.g. agg.weight = {"sum", "avg"}
@@ -633,7 +628,7 @@ Class "df" (tbl)
       first, sum, high, low, avg, stddev
 
   Returns
-  A new data frame object of the summarized input table object.
+  A new data frame of the summarized input table object.
   In the example above, the aggregated fields would be
     sum_weight and avg_weight
   */
