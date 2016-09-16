@@ -9,13 +9,18 @@ Macro "test"
   csv_file = dir + "/example.csv"
   bin_file = dir + "/example.bin"
   mtx_file = dir + "/example.mtx"
+  test.ID = {1, 2, 3}
+  test.HH = {4, 5, 6}
 
   // Create data frame
-  df = CreateObject("df")
-
+  df = CreateObject("df", test)
+Throw()
   // Add some columns
   df.mutate("new_col1", A2V({1, 2, 3}))
   df.mutate("new_col2", A2V({3, 4, 5}))
+
+  test = df[[1]]
+  Throw()
 
   // test check (which is called by mutate)
   /*df.mutate("bad1", 5)      // raises a type error
@@ -90,6 +95,11 @@ Creates a new class of object called a data_frame.
 Allows tables and other data to be loaded into memory
 and manipulated more easily than a standard TC view.
 
+tbl
+  Options Array
+  Optional argument to load table data upon creation
+  If null, the data frame is created empty
+
 Create a data_frame by calling CreateObject("data_frame")
 
 Has the following methods
@@ -105,66 +115,123 @@ Has the following methods
     e.g. df.write_csv("C:\\test.csv")
 */
 
-Class "df"
+Class "df" (tbl)
 
   init do
-
-  endItem
-
-  Macro "colnames" do
-    return(GetObjectVariableNames(self))
-  endItem
-
-  Macro "ncol" do
-    array = self.colnames()
-    return(array.length)
-  endItem
-
-  Macro "nrow" (col_name) do
-    array = self.colnames()
-    if col_name <> null then do
-      if TypeOf(col_name) <> "string" then Throw("nrow: col_name must be string")
-      pos = ArrayPosition(array, {col_name}, )
-      if pos = 0 then Throw("nrow: column '" + col_name + "' not found")
-      vector = self.(array[pos])
-    end else do
-      vector = self.(array[1])
-    end
-    return(vector.length)
+    self.tbl = tbl
+    self.check()
   endItem
 
   /*
-    Checks that the data frame is valid
+  Tests to see if there is any data.  Usually called to stop other methods
+  */
+
+  Macro "is_empty" do
+    if self.tbl = null then return("true") else return("false")
+  endItem
+
+  /*
+  Returns array of column names
+  */
+  Macro "colnames" do
+    if self.is_empty() then return()
+    for c = 1 to self.tbl.length do
+      a_colnames = a_colnames + {self.tbl[c][1]}
+    end
+    return(a_colnames)
+  endItem
+
+  /*
+  Returns number of columns
+  */
+
+  Macro "ncol" do
+    if self.is_empty() then return()
+    return(self.tbl.length)
+  endItem
+
+  /*
+  Returns number of rows
+  */
+
+  Macro "nrow" do
+    if self.is_empty() then return()
+    return(self.tbl[1][2].length)
+  endItem
+
+  /*
+  Checks that the data frame is valid
   */
   Macro "check" do
+    if self.is_empty() then return()
 
     // Convert all columns to vectors and check length
-    colnames = self.colnames()
-    for i = 1 to colnames.length do
-      colname = colnames[i]
+    for i = 1 to self.tbl.length do
+      colname = self.tbl[i][1]
 
       // Type check
-      type = TypeOf(self.(colname))
+      type = TypeOf(self.tbl.(colname))
       if type <> "vector" then do
-        if type = "array" then self.(colname) = A2V(self.(colname))
+        if type = "array" then self.tbl.(colname) = A2V(self.tbl.(colname))
         else Throw("check: '" + colname + "' is neither an array nor vector")
       end
 
       // Length check
-      if i = 1 then do
-        length = self.(colname).length
-      end else do
-        if length <> self.(colname).length then do
-          Throw("check: '" + colname + "' has different length than first column")
-        end
-      end
+      if self.tbl.(colname).length <> self.nrow() then
+        Throw("check: '" + colname + "' has different length than first column")
     end
   endItem
 
+  /*
+  Adds a field to the data frame
+  */
 
   Macro "mutate" (name, vector) do
     self.(name) = vector
     self.check()
+  endItem
+
+  /*
+  Changes the name of a column in a table object
+
+  current_name
+    String or array of strings
+    current name of the field in the table
+  new_name
+    String or array of strings
+    desired new name of the field
+    if array, must be the same length as current_name
+  */
+
+  Macro "rename" (current_name, new_name) do
+
+    // Argument checking
+    if TypeOf(current_name) <> TypeOf(new_name)
+      then Throw("rename: Current and new name must be same type")
+    if TypeOf(current_name) <> "string" then do
+      if current_name.lenth <> new_name.length
+        then Throw("rename: Field name arrays must be same length")
+    end
+
+    // If a single field string, convert string to array
+    if TypeOf(current_name) = "string" then do
+      current_name = {current_name}
+    end
+    if TypeOf(new_name) = "string" then do
+      new_name = {new_name}
+    end
+
+    colnames = self.colnames()
+    for n = 1 to current_name.length do
+      cName = current_name[n]
+      nName = new_name[n]
+
+      for c = 1 to TABLE.length do
+        if TABLE[c][1] = cName then TABLE[c][1] = nName
+      end
+    end
+
+    return(TABLE)
   endItem
 
   /*
@@ -355,6 +422,26 @@ Class "df"
     self.read_cur(mtxcur)
 
   endItem
+
+  /*
+  Creates a view based on a temporary binary file.  The primary purpose of
+  this macro is to make GISDK functions/operations available for a table object.
+  The view is often read back into a table object afterwards.
+
+  Returns:
+  view_name:  Name of the view as opened in TrandCAD
+  file_name:  Name of the temporary bin file
+  */
+
+  Macro "create_view" do
+
+    // Convert the TABLE object into a CSV and open the view
+    tempFile = GetTempFileName(".bin")
+    self.write_bin(tempFile)
+    view_name = OpenTable("bin", "FFB", {file_name}, )
+
+    return({view_name, file_name})
+  EndItem
 
   /*
   Like dply or SQL "select", returns a table with only
