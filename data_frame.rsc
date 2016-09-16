@@ -38,30 +38,19 @@ Macro "test"
   // test write_csv
   df.write_csv(dir + "/write_csv output.csv")
 
-  // test read_view
-  df = null
-  df = CreateObject("df")
-  view = OpenTable("view", "CSV", {csv_file})
-  df.read_view(view)
-  CloseView(view)
-  answer = {1, 2, 3}
-  for a = 1 to answer.length do
-    if df.ID[a] <> answer[a] then Throw("test: read_view failed")
-  end
-
-  // test read_csv and read_bin
+  // test read_csv and read_bin (which test read_view)
   df = null
   df = CreateObject("df")
   df.read_csv(csv_file)
   answer = {1, 2, 3}
   for a = 1 to answer.length do
-    if df.ID[a] <> answer[a] then Throw("test: read_csv failed")
+    if df.tbl.ID[a] <> answer[a] then Throw("test: read_csv failed")
   end
   df = null
   df = CreateObject("df")
   df.read_bin(bin_file)
   for a = 1 to answer.length do
-    if df.ID[a] <> answer[a] then Throw("test: read_bin failed")
+    if df.tbl.ID[a] <> answer[a] then Throw("test: read_bin failed")
   end
 
   // test read_mtx (and read_cur)
@@ -288,19 +277,22 @@ Class "df" (tbl)
   /*
   Converts a view into a table object.
   Useful if you want to specify a selection set.
-  view (string): TC view name
-  set (string): optional set name
+
+  view
+    String
+    TC view name
+  set
+    String
+    optional set name
   */
 
   Macro "read_view" (view, set) do
 
     // Check for required arguments and
     // that data frame is currently empty
-    if view = null then do
-      Throw("read_view: Required argument 'view' missing.")
-    end
-    if self.colnames() <> NULL
-      then Throw("read_view: data frame must be empty")
+    if view = null
+      then Throw("read_view: Required argument 'view' missing.")
+    if !self.is_empty() then Throw("read_view: data frame must be empty")
 
     a_fields = GetFields(view, )
     a_fields = a_fields[1]
@@ -317,7 +309,7 @@ Class "df" (tbl)
         SelectByQuery("temp", "Several", qry)
       end
 
-      self.(field) = GetDataVector(view + "|" + set, field, )
+      self.tbl.(field) = GetDataVector(view + "|" + set, field, )
     end
     self.check()
   endItem
