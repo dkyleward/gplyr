@@ -59,20 +59,19 @@ Macro "test"
   df.read_mtx(mtx_file)
   answer = {1, 2, 3, 4}
   for a = 1 to answer.length do
-    if df.Value[a] <> answer[a] then Throw("test: read_view failed")
+    if df.tbl.Value[a] <> answer[a] then Throw("test: read_view failed")
   end
 
   // test select
   df = null
   df = CreateObject("df")
   df.read_csv(csv_file)
-  df = df.select("Data")
+  df.select("Data")
   answer_length = 1
   answer_name = "Data"
   colnames = df.colnames()
   if colnames.length <> answer_length or colnames[1] <> answer_name
     then Throw("test: select failed")
-
 
   ShowMessage("Passed Tests")
 EndMacro
@@ -343,11 +342,11 @@ Class "df" (tbl)
   endItem
 
   /*
-  Creates a table object from a matrix currency in long form.
-  Uses read_view().
-
   Most of the time, you will want to use read_mtx(). Check both
   and decide.
+
+  Creates a table object from a matrix currency in long form.
+  Uses read_view().
   */
 
   Macro "read_cur" (mtxcur) do
@@ -434,15 +433,30 @@ Class "df" (tbl)
   EndItem
 
   /*
-  Like dply or SQL "select", returns a table with only
-  the columns listed in "fields". Unlike other methods,
-  it returns a new object, which must be captured in a
-  new variable. e.g.:
-
-  new_df = df.select("ID")
+  Removes field(s) from a table
 
   fields:
-    String or Array of strings
+    String or array of strings
+    fields to drop from the data frame
+  */
+
+  Macro "drop" (fields) do
+
+    // Argument checking and type handling
+    if fields = null then Throw("select: no fields provided")
+    if TypeOf(fields) = "string" then fields = {fields}
+
+    for f = 1 to fields.length do
+      self.tbl.(fields[f]) = null
+    end
+  endItem
+
+  /*
+  Like dply or SQL "select", returns a table with only
+  the columns listed in "fields".
+
+  fields:
+    String or array of strings
     fields to keep in the data frame
   */
 
@@ -452,16 +466,12 @@ Class "df" (tbl)
     if fields = null then Throw("select: no fields provided")
     if TypeOf(fields) = "string" then fields = {fields}
 
-    new_df = CreateObject("df")
+    colnames = self.colnames()
+    for f = 1 to colnames.length do
+      colname = colnames[f]
 
-    a_colnames = self.colnames()
-    for f = 1 to a_colnames.length do
-      field = a_colnames[f]
-
-      if ArrayPosition(fields, {field}, ) <> 0
-        then new_df.mutate(field, self.(field))
+      if ArrayPosition(fields, {colname}, ) = 0 then self.drop(colname)
     end
-    return(new_df)
   endItem
 
 
