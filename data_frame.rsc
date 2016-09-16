@@ -518,6 +518,23 @@ Class "df" (tbl)
   EndItem
 
   /*
+  Only used in development/debugging, an editor is a visible
+  window in TC that displays the contents of a view.  Use this to
+  see the contents of your data frame in a tabular format.
+
+  Calling create_editor automatically generates an error message
+  to stop the code and allow you to view the table.  This also
+  prevents from ever being used in production code, and it never
+  should be.
+  */
+
+  Macro "create_editor" do
+    {view_name, file_name} = self.create_view()
+    CreateEditor("data frame", view_name + "|", , )
+    Throw("Editor created to view\ndata frame contents")
+  EndItem
+
+  /*
   Removes field(s) from a table
 
   fields:
