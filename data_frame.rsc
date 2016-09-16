@@ -134,7 +134,7 @@ Class "df" (tbl)
     self.tbl = CopyArray(tbl)
     self.check()
     self.groups = null
-  endItem
+  EndItem
 
   /*
   Tests to see if there is any data.  Usually called to stop other methods
@@ -142,7 +142,7 @@ Class "df" (tbl)
 
   Macro "is_empty" do
     if self.tbl = null then return("true") else return("false")
-  endItem
+  EndItem
 
   /*
   This creates a complete copy of the data frame.  If you try
@@ -170,7 +170,7 @@ Class "df" (tbl)
     end
 
     return(new_df)
-  endItem
+  EndItem
 
   /*
   Returns array of column names
@@ -181,7 +181,7 @@ Class "df" (tbl)
       a_colnames = a_colnames + {self.tbl[c][1]}
     end
     return(a_colnames)
-  endItem
+  EndItem
 
   /*
   Returns number of columns
@@ -190,7 +190,7 @@ Class "df" (tbl)
   Macro "ncol" do
     if self.is_empty() then return()
     return(self.tbl.length)
-  endItem
+  EndItem
 
   /*
   Returns number of rows
@@ -199,7 +199,7 @@ Class "df" (tbl)
   Macro "nrow" do
     if self.is_empty() then return()
     return(self.tbl[1][2].length)
-  endItem
+  EndItem
 
   /*
   Checks that the data frame is valid
@@ -222,7 +222,7 @@ Class "df" (tbl)
       if self.tbl.(colname).length <> self.nrow() then
         Throw("check: '" + colname + "' has different length than first column")
     end
-  endItem
+  EndItem
 
   /*
   Adds a field to the data frame
@@ -234,7 +234,7 @@ Class "df" (tbl)
   Macro "mutate" (name, vector) do
     self.tbl.(name) = vector
     self.check()
-  endItem
+  EndItem
 
   /*
   Changes the name of a column in a table object
@@ -274,7 +274,7 @@ Class "df" (tbl)
         if self.tbl[c][1] = cName then self.tbl[c][1] = nName
       end
     end
-  endItem
+  EndItem
 
   /*
   file
@@ -326,7 +326,7 @@ Class "df" (tbl)
     end
 
     CloseFile(file)
-  endItem
+  EndItem
 
   /*
   Creates a bin file by first creating a csv (write_csv) and then
@@ -356,7 +356,7 @@ Class "df" (tbl)
     CloseView(view)
     DeleteFile(csv_file)
     DeleteFile(Substitute(csv_file, ".csv", ".DCC", ))
-  endItem
+  EndItem
 
   /*
   Converts a view into a table object.
@@ -396,7 +396,7 @@ Class "df" (tbl)
       self.tbl.(field) = GetDataVector(view + "|" + set, field, )
     end
     self.check()
-  endItem
+  EndItem
 
   /*
   Simple wrappers to read_view that read bin and csv directly
@@ -411,7 +411,7 @@ Class "df" (tbl)
     view = OpenTable("view", "FFB", {file})
     self.read_view(view)
     CloseView(view)
-  endItem
+  EndItem
   Macro "read_csv" (file) do
     // Check extension
     a_parts = ParseString(file, ".")
@@ -424,7 +424,7 @@ Class "df" (tbl)
 
     // Remove the .DCC
     DeleteFile(Substitute(file, ".csv", ".DCC", ))
-  endItem
+  EndItem
 
   /*
   Most of the time, you will want to use read_mtx(). Check both
@@ -457,7 +457,7 @@ Class "df" (tbl)
     // Clean up workspace
     DeleteFile(file_name)
     DeleteFile(Substitute(file_name, ".bin", ".DCB", ))
-  endItem
+  EndItem
 
   /*
   Reads a matrix file.
@@ -495,7 +495,7 @@ Class "df" (tbl)
     mtxcur = CreateMatrixCurrency(mtx, core, ri, ci, )
     self.read_cur(mtxcur)
 
-  endItem
+  EndItem
 
   /*
   Creates a view based on a temporary binary file.  The primary purpose of
@@ -534,7 +534,7 @@ Class "df" (tbl)
     for f = 1 to fields.length do
       self.tbl.(fields[f]) = null
     end
-  endItem
+  EndItem
 
   /*
   Like dply or SQL "select", returns a table with only
@@ -557,7 +557,7 @@ Class "df" (tbl)
 
       if ArrayPosition(fields, {colname}, ) = 0 then self.drop(colname)
     end
-  endItem
+  EndItem
 
   /*
   Checks if a value is listed anywhere in the vector.
@@ -584,7 +584,7 @@ Class "df" (tbl)
 
     tf = if ArrayPosition(array, value, ) <> 0 then "True" else "False"
     return(tf)
-  endItem
+  EndItem
 
   /*
   Establishes grouping fields for the data frame.  This modifies the
@@ -598,7 +598,7 @@ Class "df" (tbl)
     if TypeOf(fields) = "string" then fields = {fields}
 
     self.groups = fields
-  endItem
+  EndItem
 
   /*
   This macro works with group_by() similar to dlpyr in R.
@@ -708,6 +708,6 @@ Class "df" (tbl)
 
     CloseView(agg_view)
     return(agg_df)
-  endItem
+  EndItem
 
 endClass
