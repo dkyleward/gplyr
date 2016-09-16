@@ -627,7 +627,7 @@ Class "df" (tbl)
   Macro "summarize" (agg) do
 
     // copy this data frame to a new one to prevent modification
-    new_df = self
+    new_df = self.copy()
 
     // Remove fields that aren't listed for summary or grouping
     for i = 1 to new_df.groups.length do
@@ -669,8 +669,8 @@ Class "df" (tbl)
     // Create the new view using SelfAggregate()
     agg_view = SelfAggregate("aggview", agg_field_spec, opts)
 
-    // Read the view into a table object
-    agg_df = self
+    // Read the view into a new table object
+    agg_df = self.copy()
     agg_df.tbl = null
     agg_df.read_view(agg_view)
 
