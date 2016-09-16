@@ -9,33 +9,34 @@ Macro "test"
   csv_file = dir + "/example.csv"
   bin_file = dir + "/example.bin"
   mtx_file = dir + "/example.mtx"
-  test.ID = {1, 2, 3}
-  test.HH = {4, 5, 6}
+  array = null
+  array.ID = {1, 2, 3}
+  array.HH = {4, 5, 6}
 
   // Create data frame
-  df = CreateObject("df", test)
-
-  // Add a column
-  df.mutate("Emp", A2V({7, 8, 9}))
-Throw()
+  df = CreateObject("df", array)
 
   // test check (which is called by mutate)
-  /*df.mutate("bad1", 5)      // raises a type error
-  df.mutate("bad2", {1, 2}) // raises a length error*/
+  /*df.mutate("bad1", 5)      // raises a type error*/
+  /*df.mutate("bad2", {1, 2}) // raises a length error*/
 
   // test nrow/ncol
   if df.nrow() <> 3 then Throw("test: nrow failed")
   if df.ncol() <> 2 then Throw("test: ncol failed")
 
-  // test mutate
-  df.mutate("addition", df.new_col1 + df.new_col2)
-  answer = {4, 6, 8}
+  // test addition
+  df.mutate("addition", df.tbl.ID + df.tbl.HH)
+  /*
+  Addition can also be done like so, but mutate() builds in an auto check()
+  df.tbl.addition = df.tbl.ID + df.tbl.HH
+  */
+  answer = {5, 7, 9}
   for a = 1 to answer.length do
-    if df.addition[a] <> answer[a] then Throw("test: mutate failed")
+    if df.tbl.addition[a] <> answer[a] then Throw("test: mutate failed")
   end
 
   // test write_csv
-  //df.write_csv(dir + "/write_csv output.csv")
+  df.write_csv(dir + "/write_csv output.csv")
 
   // test read_view
   df = null
@@ -209,6 +210,8 @@ Class "df" (tbl)
     if TypeOf(current_name) <> TypeOf(new_name)
       then Throw("rename: Current and new name must be same type")
     if TypeOf(current_name) <> "string" then do
+      if TypeOf(current_name[1]) <> "string"
+        then Throw("rename: Field name arrays must contain strings")
       if current_name.lenth <> new_name.length
         then Throw("rename: Field name arrays must be same length")
     end
@@ -216,22 +219,17 @@ Class "df" (tbl)
     // If a single field string, convert string to array
     if TypeOf(current_name) = "string" then do
       current_name = {current_name}
-    end
-    if TypeOf(new_name) = "string" then do
       new_name = {new_name}
     end
 
-    colnames = self.colnames()
     for n = 1 to current_name.length do
       cName = current_name[n]
       nName = new_name[n]
 
-      for c = 1 to TABLE.length do
-        if TABLE[c][1] = cName then TABLE[c][1] = nName
+      for c = 1 to self.tbl.length do
+        if self.tbl[c][1] = cName then self.tbl[c][1] = nName
       end
     end
-
-    return(TABLE)
   endItem
 
   /*
@@ -272,7 +270,7 @@ Class "df" (tbl)
     for r = 1 to self.nrow() do
       line = null
       for c = 1 to colnames.length do
-        vec = self.(colnames[c])
+        vec = self.tbl.(colnames[c])
         type = vec.type
 
         strVal = if type = "string" then vec[r]
