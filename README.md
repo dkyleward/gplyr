@@ -1,2 +1,2 @@
-# data_frame
-Creating a structure similar to data frames in R
+# gplyr
+Creating a structure in GISDK similar to data frames and dplyr in R
