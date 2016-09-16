@@ -235,7 +235,7 @@ Class "df" (tbl)
   /*
   file
     String
-    full path of file
+    full path of csv file
 
   append
     True/False
@@ -244,12 +244,11 @@ Class "df" (tbl)
   Macro "write_csv" (file, append) do
 
     // Check for required arguments
-    if file = null then do
-      Throw("write_csv: no file provided")
-    end
-    else if Right(file, 3) <> "csv" then do
-      Throw("write_csv: file must be a csv")
-    end
+    if file = null then Throw("write_csv: no file provided")
+    if Right(file, 3) <> "csv"
+      then Throw("write_csv: file name must end with '.csv'")
+    if append <> null and !self.in(append, {"a", "w"})
+      then Throw("write_csv: 'append' must be either 'a', 'w', or null")
 
     // Check validity of table
     self.check()
