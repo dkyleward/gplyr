@@ -84,6 +84,16 @@ Macro "test"
   tf = df.in("a", df.tbl.Data)
   if tf <> "False" then Throw("test: in() failed")
 
+  // test group_by and summarize
+  df = null
+  df = CreateObject("df")
+  df.read_mtx(mtx_file)
+  df.group_by("TO")
+  opts = null
+  opts.Value = {"sum"}
+  new_df = df.summarize(opts)
+Throw()
+
   ShowMessage("Passed Tests")
 EndMacro
 
@@ -557,13 +567,17 @@ Class "df" (tbl)
   endItem
 
   /*
-  Similar to dplyr group_by() %>% summarize(), this macro groups a table
-  by specified columns and returns aggregate results.  The stats are calculated
-  for all columns in the table that are not listed as grouping columns.
+  This macro works with group_by() similar to dlpyr in R.
+  Summary stats are calculated for the columns specified, grouped by
+  the columns listed as grouping columns in the df.groups property.
+  (Set grouping fields using group_by().)
 
-  TABLE: A table object
-  a_groupFields: Array of column names to group by
-  agg:
+  Because a new data frame is returned, the function must be implimented
+  like this:
+
+  new_df = df.summarize(...)
+
+  agg
     Options array listing field and aggregation info
     e.g. agg.weight = {"sum", "avg"}
     This will sum and average the weight field
@@ -571,33 +585,37 @@ Class "df" (tbl)
       first, sum, high, low, avg, stddev
 
   Returns
-  A table object of the summarized input table object
+  A new data frame object of the summarized input table object.
   In the example above, the aggregated fields would be
     sum_weight and avg_weight
   */
 
-  Macro "summarize" (function) do
-    // Remove fields from TABLE that aren't listed for summary
-    for i = 1 to a_groupFields.length do
-      a_selected = a_selected + {a_groupFields[i]}
+  Macro "summarize" (agg) do
+
+    // copy this data frame to a new one to prevent modification
+    new_df = self
+
+    // Remove fields that aren't listed for summary or grouping
+    for i = 1 to new_df.groups.length do
+      a_selected = a_selected + {new_df.groups[i]}
     end
     for i = 1 to agg.length do
       a_selected = a_selected + {agg[i][1]}
     end
-    TABLE = RunMacro("Select", TABLE, a_selected)
+    new_df.select(a_selected)
 
     // Convert the TABLE object into a view in order
     // to leverage GISDKs SelfAggregate() function
-    {view, fileName} = RunMacro("Table to View", TABLE)
+    {view, file_name} = new_df.create_view()
 
-    // Create field specs for SelfAggregate()
-    agg_field_spec = view + "." + a_groupFields[1]
+    // Create a field spec for SelfAggregate()
+    agg_field_spec = view + "." + new_df.groups[1]
 
     // Create the "Additional Groups" option for SelfAggregate()
     opts = null
-    if a_groupFields.length > 1 then do
-      for g = 2 to a_groupFields.length do
-        opts.[Additional Groups] = opts.[Additional Groups] + {a_groupFields[g]}
+    if new_df.groups.length > 1 then do
+      for g = 2 to new_df.groups.length do
+        opts.[Additional Groups] = opts.[Additional Groups] + {new_df.groups[g]}
       end
     end
 
@@ -606,24 +624,21 @@ Class "df" (tbl)
       name = agg[i][1]
       stats = agg[i][2]
 
-      new_stats = null
+      proper_stats = null
       for j = 1 to stats.length do
-        stat = stats[j]
-
-        new_stats = new_stats + {{Proper(stat)}}
+        proper_stats = proper_stats + {{Proper(stats[j])}}
       end
-      fields.(name) = new_stats
+      fields.(name) = proper_stats
     end
     opts.Fields = fields
 
     // Create the new view using SelfAggregate()
     agg_view = SelfAggregate("aggview", agg_field_spec, opts)
 
-    /*opts1.Fields = {{"vmt_change", {{"Sum"}, {"Avg"}}}}*/
-    /*agg_view = SelfAggregate("aggview", agg_field_spec, opts1)*/
-
     // Read the view into a table object
-    TBL = RunMacro("View to Table", agg_view)
+    agg_df = self
+    agg_df.tbl = null
+    agg_df.read_view(agg_view)
 
     // The field names from SelfAggregate() are messy.  Clean up.
     // The first fields will be of the format "GroupedBy(ID)".
@@ -632,16 +647,16 @@ Class "df" (tbl)
     // Then the stat fields in the form of "Sum(trips)"
 
     // Set group columns back to original name
-    for c = 1 to a_groupFields.length do
-      TBL[c][1] = a_groupFields[c]
+    for c = 1 to agg_df.groups.length do
+      agg_df.tbl[c][1] = agg_df.groups[c]
     end
     // Set the count field name
-    TBL[a_groupFields.length + 1][1] = "Count"
+    agg_df.tbl[agg_df.groups.length + 1][1] = "Count"
     // Remove the First() fields
-    TBL = ExcludeArrayElements(
-      TBL,
-      a_groupFields.length + 2,
-      a_groupFields.length
+    agg_df.tbl = ExcludeArrayElements(
+      agg_df.tbl,
+      agg_df.groups.length + 2,
+      agg_df.groups.length
     )
     // Change fields like Sum(x) to sum_x
     for i = 1 to agg.length do
@@ -653,12 +668,12 @@ Class "df" (tbl)
 
         current_field = "[" + Proper(stat) + "(" + field + ")]"
         new_field = lower(stat) + "_" + field
-        TBL = RunMacro("Rename Field", TBL, current_field, new_field)
+        agg_df.rename(current_field, new_field)
       end
     end
 
     CloseView(agg_view)
-    return(TBL)
+    return(agg_df)
   endItem
 
 endClass
