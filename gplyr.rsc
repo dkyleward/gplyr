@@ -41,8 +41,15 @@ Macro "test"
     if df.tbl.addition[a] <> answer[a] then Throw("test: mutate failed")
   end
 
-  // test write_csv
-  df.write_csv(dir + "/write_csv output.csv")
+  // test colnames
+  df = CreateObject("df")
+  df.read_mtx(mtx_file)
+  names = {"a", "b", "c", "d"}
+  df.colnames(names)
+  check = df.colnames()
+  for a = 1 to names.length do
+    if check[a] <> names[a] then Throw("test: colnames failed")
+  end
 
   // test read_csv and read_bin (which test read_view)
   df = CreateObject("df")
@@ -186,14 +193,38 @@ Class "df" (tbl)
   EndItem
 
   /*
-  Returns array of column names
+  Either:
+    Returns array of all column names
+    Sets all column names
+
+  Use rename() to change individual column names
+
+  names
+    Array of strings
+    If provided, the method will set the column names instead of
+    retrieve them
   */
-  Macro "colnames" do
+  Macro "colnames" (names) do
+
+    // Argument checking
     if self.is_empty() then return()
-    for c = 1 to self.tbl.length do
-      a_colnames = a_colnames + {self.tbl[c][1]}
+    if names <> null then do
+      if TypeOf(names) <> "array" then
+        Throw("colnames: if provided, 'names' argument must be an array")
+      if names.length <> self.ncol() then
+        Throw("colnames: 'names' length does not match number of columns")
     end
-    return(a_colnames)
+
+    if names = null then do
+      for c = 1 to self.ncol() do
+        a_colnames = a_colnames + {self.tbl[c][1]}
+      end
+      return(a_colnames)
+    end else do
+      for c = 1 to names.length do
+        self.tbl[c][1] = names[c]
+      end
+    end
   EndItem
 
   /*
