@@ -45,7 +45,6 @@ Macro "test"
   df.write_csv(dir + "/write_csv output.csv")
 
   // test read_csv and read_bin (which test read_view)
-  df = null
   df = CreateObject("df")
   df.read_csv(csv_file)
   answer = {1, 2, 3}
@@ -60,7 +59,6 @@ Macro "test"
   end
 
   // test read_mtx (and read_cur)
-  df = null
   df = CreateObject("df")
   df.read_mtx(mtx_file)
   answer = {1, 2, 3, 4}
@@ -69,7 +67,6 @@ Macro "test"
   end
 
   // test select
-  df = null
   df = CreateObject("df")
   df.read_csv(csv_file)
   df.select("Data")
@@ -80,7 +77,6 @@ Macro "test"
     then Throw("test: select failed")
 
   // test in
-  df = null
   df = CreateObject("df")
   df.read_csv(csv_file)
   tf = df.in({5, 6}, df.tbl.Data)
@@ -91,7 +87,6 @@ Macro "test"
   if tf <> "False" then Throw("test: in() failed")
 
   // test group_by and summarize
-  df = null
   df = CreateObject("df")
   df.read_mtx(mtx_file)
   df.group_by("TO")
@@ -102,6 +97,12 @@ Macro "test"
   for a = 1 to answer.length do
     if df.tbl.sum_value[a] <> answer[a] then Throw("test: summarize() failed")
   end
+
+  // test filter
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  df.filter("ID = 1")
+  Throw()
 
   ShowMessage("Passed Tests")
 EndMacro
@@ -712,6 +713,31 @@ Class "df" (tbl)
     end
 
     CloseView(agg_view)
+  EndItem
+
+  /*
+  Applies a query to a table object.
+
+  query
+    String
+    Valid TransCAD query (e.g. "ID = 5" or "Name = 'Sam'")
+    Do not include "Select * where" in the query string
+  */
+
+  Macro "filter" (query) do
+
+    // Argument check
+    if query = null then Throw("filter: query is missing")
+    if TypeOf(query) <> "string" then Throw("filter: query must be a string")
+    if Proper(Left(query, 6)) = "Select" then
+      Throw("filter: do not include 'Select * where' in your query")
+
+    {view, file} = self.create_view()
+    SetView(view)
+    query = "Select * where " + query
+    SelectByQuery("set", "Several", query)
+    self.tbl = null
+    self.read_view(view, "set")
   EndItem
 
 endClass
