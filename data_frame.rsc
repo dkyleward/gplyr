@@ -717,7 +717,7 @@ Class "df" (tbl)
       for j = 1 to stats.length do
         stat = stats[j]
 
-        current_field = "[" + Proper(stat) + "(" + field + ")]"
+        current_field = Proper(stat) + "(" + field + ")"
         new_field = lower(stat) + "_" + field
         agg_df.rename(current_field, new_field)
       end
