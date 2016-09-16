@@ -73,6 +73,17 @@ Macro "test"
   if colnames.length <> answer_length or colnames[1] <> answer_name
     then Throw("test: select failed")
 
+  // test in
+  df = null
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  tf = df.in({5, 6}, df.tbl.Data)
+  if tf <> "True" then Throw("test: in() failed")
+  tf = df.in(5, df.tbl.Data)
+  if tf <> "True" then Throw("test: in() failed")
+  tf = df.in("a", df.tbl.Data)
+  if tf <> "False" then Throw("test: in() failed")
+
   ShowMessage("Passed Tests")
 EndMacro
 
@@ -106,6 +117,7 @@ Class "df" (tbl)
   init do
     self.tbl = CopyArray(tbl)
     self.check()
+    self.groups = null
   endItem
 
   /*
@@ -443,7 +455,7 @@ Class "df" (tbl)
   Macro "drop" (fields) do
 
     // Argument checking and type handling
-    if fields = null then Throw("select: no fields provided")
+    if fields = null then Throw("drop: no fields provided")
     if TypeOf(fields) = "string" then fields = {fields}
 
     for f = 1 to fields.length do
@@ -474,5 +486,150 @@ Class "df" (tbl)
     end
   endItem
 
+  /*
+  Checks if a value is listed anywhere in the vector.
+
+  value
+    String, numeric, array, or vector
+    The value to search for
+
+  array
+    Array or vector
+    The array to search in
+
+  Returns True/False
+  */
+
+  Macro "in" (value, array) do
+
+    // Argument check
+    if value = null then Throw("in: value not provided")
+    if TypeOf(array) = "vector" then array = V2A(array)
+    if array = null then Throw("in: array not provided")
+    if TypeOf(value) = "vector" then value = V2A(value)
+    else if TypeOf(value) <> "array" then value = {value}
+
+    tf = if ArrayPosition(array, value, ) <> 0 then "True" else "False"
+    return(tf)
+  endItem
+
+  /*
+  Establishes grouping fields for the data frame.  This modifies the
+  behavior of summary functions.
+  */
+
+  Macro "group_by" (fields) do
+
+    // Argument checking and type handling
+    if fields = null then Throw("group_by: no fields provided")
+    if TypeOf(fields) = "string" then fields = {fields}
+
+    self.groups = fields
+  endItem
+
+  /*
+  Similar to dplyr group_by() %>% summarize(), this macro groups a table
+  by specified columns and returns aggregate results.  The stats are calculated
+  for all columns in the table that are not listed as grouping columns.
+
+  TABLE: A table object
+  a_groupFields: Array of column names to group by
+  agg:
+    Options array listing field and aggregation info
+    e.g. agg.weight = {"sum", "avg"}
+    This will sum and average the weight field
+    The possible aggregations are:
+      first, sum, high, low, avg, stddev
+
+  Returns
+  A table object of the summarized input table object
+  In the example above, the aggregated fields would be
+    sum_weight and avg_weight
+  */
+
+  Macro "summarize" (function) do
+    // Remove fields from TABLE that aren't listed for summary
+    for i = 1 to a_groupFields.length do
+      a_selected = a_selected + {a_groupFields[i]}
+    end
+    for i = 1 to agg.length do
+      a_selected = a_selected + {agg[i][1]}
+    end
+    TABLE = RunMacro("Select", TABLE, a_selected)
+
+    // Convert the TABLE object into a view in order
+    // to leverage GISDKs SelfAggregate() function
+    {view, fileName} = RunMacro("Table to View", TABLE)
+
+    // Create field specs for SelfAggregate()
+    agg_field_spec = view + "." + a_groupFields[1]
+
+    // Create the "Additional Groups" option for SelfAggregate()
+    opts = null
+    if a_groupFields.length > 1 then do
+      for g = 2 to a_groupFields.length do
+        opts.[Additional Groups] = opts.[Additional Groups] + {a_groupFields[g]}
+      end
+    end
+
+    // Create the fields option for SelfAggregate()
+    for i = 1 to agg.length do
+      name = agg[i][1]
+      stats = agg[i][2]
+
+      new_stats = null
+      for j = 1 to stats.length do
+        stat = stats[j]
+
+        new_stats = new_stats + {{Proper(stat)}}
+      end
+      fields.(name) = new_stats
+    end
+    opts.Fields = fields
+
+    // Create the new view using SelfAggregate()
+    agg_view = SelfAggregate("aggview", agg_field_spec, opts)
+
+    /*opts1.Fields = {{"vmt_change", {{"Sum"}, {"Avg"}}}}*/
+    /*agg_view = SelfAggregate("aggview", agg_field_spec, opts1)*/
+
+    // Read the view into a table object
+    TBL = RunMacro("View to Table", agg_view)
+
+    // The field names from SelfAggregate() are messy.  Clean up.
+    // The first fields will be of the format "GroupedBy(ID)".
+    // Next is a "Count(bin)" field.
+    // Then there is a first field for each group variable ("First(ID)")
+    // Then the stat fields in the form of "Sum(trips)"
+
+    // Set group columns back to original name
+    for c = 1 to a_groupFields.length do
+      TBL[c][1] = a_groupFields[c]
+    end
+    // Set the count field name
+    TBL[a_groupFields.length + 1][1] = "Count"
+    // Remove the First() fields
+    TBL = ExcludeArrayElements(
+      TBL,
+      a_groupFields.length + 2,
+      a_groupFields.length
+    )
+    // Change fields like Sum(x) to sum_x
+    for i = 1 to agg.length do
+      field = agg[i][1]
+      stats = agg[i][2]
+
+      for j = 1 to stats.length do
+        stat = stats[j]
+
+        current_field = "[" + Proper(stat) + "(" + field + ")]"
+        new_field = lower(stat) + "_" + field
+        TBL = RunMacro("Rename Field", TBL, current_field, new_field)
+      end
+    end
+
+    CloseView(agg_view)
+    return(TBL)
+  endItem
 
 endClass
