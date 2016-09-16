@@ -14,13 +14,10 @@ Macro "test"
 
   // Create data frame
   df = CreateObject("df", test)
-Throw()
-  // Add some columns
-  df.mutate("new_col1", A2V({1, 2, 3}))
-  df.mutate("new_col2", A2V({3, 4, 5}))
 
-  test = df[[1]]
-  Throw()
+  // Add a column
+  df.mutate("Emp", A2V({7, 8, 9}))
+Throw()
 
   // test check (which is called by mutate)
   /*df.mutate("bad1", 5)      // raises a type error
@@ -184,10 +181,13 @@ Class "df" (tbl)
 
   /*
   Adds a field to the data frame
+
+  vector
+    Array or Vector
   */
 
   Macro "mutate" (name, vector) do
-    self.(name) = vector
+    self.tbl.(name) = vector
     self.check()
   endItem
 
