@@ -98,7 +98,6 @@ Macro "test"
   opts = null
   opts.Value = {"sum"}
   new_df = df.summarize(opts)
-Throw()
 
   ShowMessage("Passed Tests")
 EndMacro
