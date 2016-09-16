@@ -285,6 +285,36 @@ Class "df" (tbl)
   endItem
 
   /*
+  Creates a bin file by first creating a csv (write_csv) and then
+  exporting that to a bin file.
+
+  file
+    String
+    full path of bin file
+  */
+
+  Macro "write_bin" (file) do
+
+    // Argument check
+    if file = null then Throw("write_bin: no file provided")
+    if Right(file, 3) <> "bin"
+      then Throw("write_bin: file name must end with '.bin'")
+
+    // First write to csv
+    csv_file = Substitute(file, ".bin", ".csv", )
+    self.write_csv(csv_file)
+
+    // Open and export that csv to a bin
+    view = OpenTable("csv", "CSV", {csv_file})
+    ExportView(view + "|", "FFB", file, , )
+
+    // Clean up workspace
+    CloseView(view)
+    DeleteFile(csv_file)
+    DeleteFile(Substitute(csv_file, ".csv", ".DCC", ))
+  endItem
+
+  /*
   Converts a view into a table object.
   Useful if you want to specify a selection set.
 
