@@ -429,30 +429,62 @@ Class "df" (tbl)
     DeleteFile(Substitute(file, ".csv", ".DCC", ))
   EndItem
 
-  /*
-  Most of the time, you will want to use read_mtx(). Check both
-  and decide.
+    /*
+  Reads a matrix file.
 
-  Creates a table object from a matrix currency in long form.
-  Uses read_view().
+  file
+    String
+    Full file path of matrix
+
+  cores
+    String or array of strings
+    Core names to read - defaults to all cores
+
+  ri and ci
+    String
+    Row and column indicies to use.  Defaults to the default
+    indices.
+
+  all_cells
+    "Yes" or "No"
+    Whether to include every ij pair in the data frame.  Defaults to "Yes".
+    Set to "No" to drop cells with missing values.
   */
 
-  Macro "read_cur" (mtxcur) do
+  Macro "read_mtx" (file, cores, ri, ci, all_cells) do
 
-    // Validate arguments
-    if mtxcur = null then Throw("read_mtx: no currency supplied")
-    if mtxcur.matrix.Name = null then do
-      Throw("read_mtx: mtxcur is not a valid matrix currency")
+    // Check arguments and set defaults if needed
+    if !self.is_empty() then Throw("read_mtx: data frame must be empty")
+    a_parts = ParseString(file, ".")
+    ext = a_parts[2]
+    if ext <> "mtx" then Throw("read_mtx: file name must end in '.mtx'")
+    mtx = OpenMatrix(file, )
+    a_corenames = GetMatrixCoreNames(mtx)
+    if cores = null then cores = a_corenames
+    if TypeOf(cores) = "string" then cores = {cores}
+    if TypeOf(cores) <> "array" then
+      Throw("read_mtx: 'cores' must be either an array, string, or null")
+    for c = 1 to cores.length do
+      if !self.in(cores[c], a_corenames)
+        then Throw("read_mtx: core '" + cores[c] + " not found in matrix")
     end
-
-    // Create a temporary bin file
-    file_name = GetTempFileName(".bin")
+    {d_ri, d_ci} = GetMatrixIndex(mtx)
+    if ri = null then ri = d_ri
+    if ci = null then ci = d_ci
+    {row_inds, col_inds} = GetMatrixIndexNames(mtx)
+    if !self.in(ri, row_inds)
+      then Throw("read_mtx: row index '" + ri + "' not found in matrix")
+    if !self.in(ci, col_inds)
+      then Throw("read_mtx: column index '" + ci + "' not found in matrix")
+    if all_cells = null then all_cells = "Yes"
 
     // Set the matrix index and export to a table
-    SetMatrixIndex(mtxcur.matrix, mtxcur.rowindex, mtxcur.colindex)
+    SetMatrixIndex(mtx, ri, ci)
+    file_name = GetTempFileName(".bin")
     opts = null
-    opts.Tables = {mtxcur.corename}
-    CreateTableFromMatrix(mtxcur.matrix, file_name, "FFB", opts)
+    opts.Complete = all_cells
+    opts.Tables = cores
+    CreateTableFromMatrix(mtx, file_name, "FFB", opts)
 
     // Read exported table into view
     self.read_bin(file_name)
@@ -460,44 +492,6 @@ Class "df" (tbl)
     // Clean up workspace
     DeleteFile(file_name)
     DeleteFile(Substitute(file_name, ".bin", ".DCB", ))
-  EndItem
-
-  /*
-  Reads a matrix file.
-
-  file
-    String
-    Full file path of matrix
-
-  core
-    String
-    Core name to read - defaults to first core
-
-  ri and ci
-    String
-    Row and column indicies to use.  Defaults to the default
-    indices.
-  */
-
-  Macro "read_mtx" (file, core, ri, ci) do
-
-    // Check arguments and set defaults if needed
-    a_parts = ParseString(file, ".")
-    ext = a_parts[2]
-    if ext <> "mtx" then Throw("read_mtx: file not a .mtx")
-    mtx = OpenMatrix(file, )
-    if core = null then do
-      a_corenames = GetMatrixCoreNames(mtx)
-      core = a_corenames[1]
-    end
-    a_def_inds = GetMatrixIndex(mtx)
-    if ri = null then ri = a_def_inds[1]
-    if ci = null then ci = a_def_inds[2]
-
-    // Create matrix currency and read it in
-    mtxcur = CreateMatrixCurrency(mtx, core, ri, ci, )
-    self.read_cur(mtxcur)
-
   EndItem
 
   /*
