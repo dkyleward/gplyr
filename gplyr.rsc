@@ -5,7 +5,7 @@ Runs through all the methods and writes out results
 Macro "test"
 
   // Input files used in some tests
-  dir = "C:\\projects/data_frame/unit_test_data"
+  dir = "C:\\projects/gplyr/unit_test_data"
   csv_file = dir + "/example.csv"
   bin_file = dir + "/example.bin"
   mtx_file = dir + "/example.mtx"
@@ -119,6 +119,18 @@ Macro "test"
   df = CreateObject("df")
   df.read_csv(csv_file)
   df.filter("ID = 1")
+  if df.tbl.ID[1] <> 1 then Throw("test: filter failed")
+
+  // test left_join
+  master = CreateObject("df")
+  master.read_csv(csv_file)
+  slave = CreateObject("df")
+  slave.read_mtx(mtx_file)
+  master.left_join(slave, "ID", "FROM")
+  answer = {"ID", "Data", "TO", "value", "second_core"}
+  for a = 1 to answer.length do
+    if master.tbl[a][1] <> answer[a] then Throw("test: left_join() failed")
+  end
 
   ShowMessage("Passed Tests")
 EndMacro
@@ -778,6 +790,70 @@ Class "df" (tbl)
     SelectByQuery("set", "Several", query)
     self.tbl = null
     self.read_view(view, "set")
+  EndItem
+
+
+  /*
+  Joins two data frame objects.
+
+  slave_tbl
+    data frame objects
+
+  m_id and s_id
+    String or array
+    The id fields from master and slave to use for join.  Use an array to
+    specify multiple fields to join by.
+  */
+
+  Macro "left_join" (slave_tbl, m_id, s_id) do
+
+    // Argument check
+    if TypeOf(m_id) = "string" then m_id = {m_id}
+    if TypeOf(s_id) = "string" then s_id = {s_id}
+    if m_id.length <> s_id.length then
+      Throw("left_join: 'm_id' and 's_id' are not the same length")
+
+    {master_view, master_file} = self.create_view()
+    {slave_view, slave_file} = slave_tbl.create_view()
+
+    dim m_spec[m_id.length]
+    dim s_spec[s_id.length]
+    for i = 1 to m_id.length do
+      m_spec[i] = master_view + "." + m_id[i]
+      s_spec[i] = slave_view + "." + s_id[i]
+    end
+
+    jv = JoinViewsMulti("jv", m_spec, s_spec, )
+    self.tbl = null
+    self.read_view(jv)
+
+    // JoinViewsMulti() will attach the view names to the m_id and s_id fields
+    // if they are the same.
+    // Remove the s_id fields, and clean the m_id fields (if needed)
+    for i = 1 to m_id.length do
+      m = m_id[i]
+      s = s_id[i]
+
+      if m = s then do
+        // Rename master field
+        current_name = "[" + master_view + "]." + m
+        self.rename(current_name, m)
+        // Delete slave field
+        self.tbl.("[" + slave_view + "]." + s) = null
+      end else do
+        // Delete slave field
+        self.tbl.(s) = null
+      end
+    end
+
+    // Clean up the workspace
+    CloseView(jv)
+    CloseView(master_view)
+    DeleteFile(master_file)
+    DeleteFile(Substitute(master_file, ".bin", ".DCB", ))
+    CloseView(slave_view)
+    DeleteFile(slave_file)
+    DeleteFile(Substitute(slave_file, ".bin", ".DCB", ))
   EndItem
 
 endClass
