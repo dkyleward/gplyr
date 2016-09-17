@@ -132,13 +132,18 @@ Macro "test"
     if master.tbl[a][1] <> answer[a] then Throw("test: left_join() failed")
   end
 
-  // test unite
+  // test unite and separate
   df = CreateObject("df")
   df.read_mtx(mtx_file)
   df.unite({"FROM", "TO"}, "comb")
-  answer = {"1-1", "1-2", "2-1", "2-2"}
+  answer = {"1_1", "1_2", "2_1", "2_2"}
   for a = 1 to answer.length do
     if df.tbl.comb[a] <> answer[a] then Throw("test: unite() failed")
+  end
+  df.separate("comb", {"a", "b"})
+  answer = {1, 1, 2, 2}
+  for a = 1 to answer.length do
+    if df.tbl.a[a] <> answer[a] then Throw("test: separate() failed")
   end
 
   ShowMessage("Passed Tests")
@@ -890,15 +895,74 @@ Class "df" (tbl)
     if new_col = null then Throw("unite: `new_col` not provided")
     if TypeOf(cols) <> "array" then Throw("unite: `cols` must be an array")
 
-    /*opts = null
-    opts.Constant = ""
-    vec = Vector(self.nrow(), "String", opts)*/
     for c = 1 to cols.length do
       col = cols[c]
 
       if c = 1 then self.tbl.(new_col) = String(self.tbl.(col))
-      else self.tbl.(new_col) = self.tbl.(new_col) + "-" + String(self.tbl.(col))
+      else self.tbl.(new_col) = self.tbl.(new_col) + sep + String(self.tbl.(col))
     end
+  EndItem
+
+  /*
+  Opposite of unite().  Separates a column based on a delimiter
+
+  col
+    String
+    Name of column to seaprate
+
+  new_cols
+    Array of strings
+    Names of new columns
+
+  sep
+    String
+    Delimter to use to parse
+  */
+
+  Macro "separate" (col, new_cols, sep) do
+
+    // Argument check
+    if sep = null then sep = "_"
+    if col = null then Throw("unite: `col` not provided")
+    if new_cols = null then Throw("unite: `new_cols` not provided")
+    if TypeOf(new_cols) <> "array" then Throw("unite: `new_cols` must be an array")
+    vec = self.tbl.(col)
+    if TypeOf(vec[1]) <> "string" then
+      Throw("separate: column '" + col + "' doesn't contain strings")
+
+    dim array[new_cols.length, self.nrow()]
+    for r = 1 to self.nrow() do
+      vec = self.tbl.(col)
+      string = vec[r]
+      parts = ParseString(string, sep)
+
+      // Error check
+      if r = 1 then do
+        if parts.length <> new_cols.length then
+          Throw("separate: `new_cols` length doesn't match parsed '" + col + "'")
+      end
+
+      for p = 1 to parts.length do
+        value = parts[p]
+
+        // Convert any string-number into a number
+        value = if value = "0"
+          then 0
+          else if Value(value) = 0
+            then value
+            else Value(value)
+
+        array[p][r] = value
+      end
+    end
+
+    // fill data frame
+    for c = 1 to new_cols.length do
+      self.tbl.(new_cols[c]) = array[c]
+    end
+
+    // remove original column
+    self.tbl.(col) = null
   EndItem
 
 endClass
