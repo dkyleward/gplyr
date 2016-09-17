@@ -119,7 +119,7 @@ Macro "test"
   df = CreateObject("df")
   df.read_csv(csv_file)
   df.filter("ID = 1")
-  if df.tbl.ID[1] <> 1 then Throw("test: filter failed")
+  if df.tbl.ID[1] <> 1 then Throw("test: filter() failed")
 
   // test left_join
   master = CreateObject("df")
@@ -130,6 +130,15 @@ Macro "test"
   answer = {"ID", "Data", "TO", "value", "second_core"}
   for a = 1 to answer.length do
     if master.tbl[a][1] <> answer[a] then Throw("test: left_join() failed")
+  end
+
+  // test unite
+  df = CreateObject("df")
+  df.read_mtx(mtx_file)
+  df.unite({"FROM", "TO"}, "comb")
+  answer = {"1-1", "1-2", "2-1", "2-2"}
+  for a = 1 to answer.length do
+    if df.tbl.comb[a] <> answer[a] then Throw("test: unite() failed")
   end
 
   ShowMessage("Passed Tests")
@@ -854,6 +863,42 @@ Class "df" (tbl)
     CloseView(slave_view)
     DeleteFile(slave_file)
     DeleteFile(Substitute(slave_file, ".bin", ".DCB", ))
+  EndItem
+
+  /*
+  Concatenates multiple column values into a single column
+
+  cols
+    Array of strings
+    column names to unite
+
+  new_col
+    String
+    Name of new column to place results
+
+  sep
+    String
+    Separator to use between values
+    Defaults to `_`
+  */
+
+  Macro "unite" (cols, new_col, sep) do
+
+    // Argument check
+    if sep = null then sep = "_"
+    if cols = null then Throw("unite: `cols` not provided")
+    if new_col = null then Throw("unite: `new_col` not provided")
+    if TypeOf(cols) <> "array" then Throw("unite: `cols` must be an array")
+
+    /*opts = null
+    opts.Constant = ""
+    vec = Vector(self.nrow(), "String", opts)*/
+    for c = 1 to cols.length do
+      col = cols[c]
+
+      if c = 1 then self.tbl.(new_col) = String(self.tbl.(col))
+      else self.tbl.(new_col) = self.tbl.(new_col) + "-" + String(self.tbl.(col))
+    end
   EndItem
 
 endClass
