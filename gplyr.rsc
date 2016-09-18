@@ -898,8 +898,13 @@ Class "df" (tbl)
     for c = 1 to cols.length do
       col = cols[c]
 
-      if c = 1 then self.tbl.(new_col) = String(self.tbl.(col))
-      else self.tbl.(new_col) = self.tbl.(new_col) + sep + String(self.tbl.(col))
+      vec = self.tbl.(col)
+      vec = if (vec.type = "string")
+        then self.tbl.(col)
+        else String(self.tbl.(col))
+      self.tbl.(new_col) = if (c = 1)
+        then vec
+        else self.tbl.(new_col) + sep + vec
     end
   EndItem
 
