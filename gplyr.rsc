@@ -167,6 +167,18 @@ Macro "test"
     if df.tbl.Blue[a] <> answer[a] then Throw("test: spread() failed")
   end
 
+  // test bind_rows
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  df2 = CreateObject("df")
+  df2.read_csv(csv_file)
+  df.bind_rows(df2)
+  if df.tbl[2][1] <> "Data" then Throw("test: bind_rows() failed")
+  answer = {4, 5, 6, 4, 5, 6}
+  for a = 1 to answer.length do
+    if df.tbl.Data[a] <> answer[a] then Throw("test: bind_rows() failed")
+  end
+
   ShowMessage("Passed Tests")
 EndMacro
 
@@ -1068,6 +1080,42 @@ Class "df" (tbl)
     if unite then self.separate(join_col, a_unite_cols)
     first_col.tbl.(join_col) = null
     self.tbl = InsertArrayElements(self.tbl, self.tbl.length + 1, first_col.tbl)
+  EndItem
+
+  /*
+  Combines the rows of two tables. They must have the
+  same columns.
+
+  df
+    data frame object
+    data frame that gets appended
+  */
+
+  Macro "bind_rows" (df) do
+
+    // Check that tables have same columns
+    col1 = self.colnames()
+    col2 = df.colnames()
+    for i = 1 to col1.length do
+      if col1[i] <> col2[i] then Throw("bind_rows: Columns are not the same")
+    end
+
+    // Make sure both tables are vectorized and pass all checks
+    self.check()
+    df.check()
+
+    // Combine tables
+    final = null
+    for i = 1 to col1.length do
+      col_name = col1[i]
+
+      a1 = V2A(self.tbl.(col_name))
+      a2 = V2A(df.tbl.(col_name))
+      self.tbl.(col_name) = a1 + a2
+    end
+
+    // Final check
+    self.check()
   EndItem
 
 endClass
