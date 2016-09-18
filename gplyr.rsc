@@ -1,210 +1,20 @@
 /*
-Test macro
-Runs through all the methods and writes out results
-*/
-Macro "test"
-
-  // Input files used in some tests
-  dir = "C:\\projects/gplyr/unit_test_data"
-  csv_file = dir + "/example.csv"
-  bin_file = dir + "/example.bin"
-  mtx_file = dir + "/example.mtx"
-  spread_file = dir + "/spread_example.csv"
-  array = null
-  array.ID = {1, 2, 3}
-  array.HH = {4, 5, 6}
-
-  // Create data frame
-  df = CreateObject("df", array)
-
-  // test check (which is called by mutate)
-  /*df.mutate("bad1", 5)      // raises a type error*/
-  /*df.mutate("bad2", {1, 2}) // raises a length error*/
-
-  // test nrow/ncol
-  if df.nrow() <> 3 then Throw("test: nrow failed")
-  if df.ncol() <> 2 then Throw("test: ncol failed")
-
-  // test copy
-  new_df = df.copy()
-  new_df.tbl.ID = null
-  colnames = df.colnames()
-  if colnames.length <> 2 then Throw("test: copy failed")
-
-  // test addition
-  df.mutate("addition", df.tbl.ID + df.tbl.HH)
-  /*
-  Addition can also be done like so, but mutate() builds in an auto check()
-  df.tbl.addition = df.tbl.ID + df.tbl.HH
-  */
-  answer = {5, 7, 9}
-  for a = 1 to answer.length do
-    if df.tbl.addition[a] <> answer[a] then Throw("test: mutate failed")
-  end
-
-  // test colnames
-  df = CreateObject("df")
-  df.read_mtx(mtx_file)
-  names = {"a", "b", "c", "d"}
-  df.colnames(names)
-  check = df.colnames()
-  for a = 1 to names.length do
-    if check[a] <> names[a] then Throw("test: colnames failed")
-  end
-
-  // test read_csv and read_bin (which test read_view)
-  df = CreateObject("df")
-  df.read_csv(csv_file)
-  answer = {1, 2, 3}
-  for a = 1 to answer.length do
-    if df.tbl.ID[a] <> answer[a] then Throw("test: read_csv failed")
-  end
-  df = null
-  df = CreateObject("df")
-  df.read_bin(bin_file)
-  for a = 1 to answer.length do
-    if df.tbl.ID[a] <> answer[a] then Throw("test: read_bin failed")
-  end
-
-  // test write_csv
-  df = CreateObject("df")
-  df.read_csv(csv_file)
-  test_csv = dir + "/write_csv output.csv"
-  df.write_csv(test_csv)
-  df = CreateObject("df")
-  df.read_csv(test_csv)
-  DeleteFile(test_csv)
-  if df.ncol() <> 2 then Throw("test: write_csv failed")
-
-  // test read_mtx (and read_cur)
-  df = CreateObject("df")
-  df.read_mtx(mtx_file)
-  answer = {1, 2, 3, 4}
-  for a = 1 to answer.length do
-    if df.tbl.value[a] <> answer[a] then Throw("test: read_view failed")
-  end
-
-  // test select
-  df = CreateObject("df")
-  df.read_csv(csv_file)
-  df.select("Data")
-  answer_length = 1
-  answer_name = "Data"
-  colnames = df.colnames()
-  if colnames.length <> answer_length or colnames[1] <> answer_name
-    then Throw("test: select failed")
-
-  // test in
-  df = CreateObject("df")
-  df.read_csv(csv_file)
-  tf = df.in({5, 6}, df.tbl.Data)
-  if tf <> "True" then Throw("test: in() failed")
-  tf = df.in(5, df.tbl.Data)
-  if tf <> "True" then Throw("test: in() failed")
-  tf = df.in("a", df.tbl.Data)
-  if tf <> "False" then Throw("test: in() failed")
-
-  // test group_by and summarize
-  df = CreateObject("df")
-  df.read_mtx(mtx_file)
-  df.group_by("TO")
-  opts = null
-  opts.value = {"sum"}
-  df.summarize(opts)
-  answer = {4, 6}
-  for a = 1 to answer.length do
-    if df.tbl.sum_value[a] <> answer[a] then Throw("test: summarize() failed")
-  end
-
-  // test filter
-  df = CreateObject("df")
-  df.read_csv(csv_file)
-  df.filter("ID = 1")
-  if df.tbl.ID[1] <> 1 then Throw("test: filter() failed")
-
-  // test left_join
-  master = CreateObject("df")
-  master.read_csv(csv_file)
-  slave = CreateObject("df")
-  slave.read_mtx(mtx_file)
-  master.left_join(slave, "ID", "FROM")
-  answer = {"ID", "Data", "TO", "value", "second_core"}
-  for a = 1 to answer.length do
-    if master.tbl[a][1] <> answer[a] then Throw("test: left_join() failed")
-  end
-
-  // test unite and separate
-  df = CreateObject("df")
-  df.read_mtx(mtx_file)
-  df.unite({"FROM", "TO"}, "comb")
-  answer = {"1_1", "1_2", "2_1", "2_2"}
-  for a = 1 to answer.length do
-    if df.tbl.comb[a] <> answer[a] then Throw("test: unite() failed")
-  end
-  df.separate("comb", {"a", "b"})
-  answer = {1, 1, 2, 2}
-  for a = 1 to answer.length do
-    if df.tbl.a[a] <> answer[a] then Throw("test: separate() failed")
-  end
-
-  // test spread
-  df = CreateObject("df")
-  df.read_csv(spread_file)
-  df.spread("Color", "Count", 0)
-  if df.tbl[2][1] <> "Blue" then Throw("test: spread() failed")
-  answer = {0, 115, 25}
-  for a = 1 to answer.length do
-    if df.tbl.Blue[a] <> answer[a] then Throw("test: spread() failed")
-  end
-  // Add arbitrary numeric column and re-test
-  df = CreateObject("df")
-  df.read_csv(spread_file)
-  df.mutate("arbitrary", {1, 2, 3, 4, 5, 6})
-  df.spread("Color", "Count", 0)
-  if df.tbl[3][1] <> "Blue" then Throw("test: spread() failed")
-  answer = {0, 0, 115, 0, 0, 25}
-  for a = 1 to answer.length do
-    if df.tbl.Blue[a] <> answer[a] then Throw("test: spread() failed")
-  end
-
-  // test bind_rows
-  df = CreateObject("df")
-  df.read_csv(csv_file)
-  df2 = CreateObject("df")
-  df2.read_csv(csv_file)
-  df.bind_rows(df2)
-  if df.tbl[2][1] <> "Data" then Throw("test: bind_rows() failed")
-  answer = {4, 5, 6, 4, 5, 6}
-  for a = 1 to answer.length do
-    if df.tbl.Data[a] <> answer[a] then Throw("test: bind_rows() failed")
-  end
-
-  ShowMessage("Passed Tests")
-EndMacro
-
-/*
 Creates a new class of object called a data_frame.
 Allows tables and other data to be loaded into memory
 and manipulated more easily than a standard TC view.
+Designed to mimic components of R packages `dplyr`
+and `tidyr`.
 
 tbl
   Options Array
   Optional argument to load table data upon creation
   If null, the data frame is created empty
 
-Create a data_frame by calling CreateObject("data_frame")
+Create a data_frame by calling
+df = CreateObject("data_frame")
 
-Has the following methods
-  nrow
-    returns number of rows
-  ncol
-    returns number of columns
-  mutate
-    create or modify existing column
-    e.g. df.mutate("density", df.households / df.area)
-  write_csv
-    write table out to csv
-    e.g. df.write_csv("C:\\test.csv")
+This package is open source and hosted here:
+https://github.com/dkyleward/gplyr
 */
 
 Class "df" (tbl)
@@ -1119,3 +929,188 @@ Class "df" (tbl)
   EndItem
 
 endClass
+
+
+/*
+Test macro
+Runs through all the methods and writes out results
+*/
+Macro "test"
+
+  // Input files used in some tests
+  dir = "C:\\projects/gplyr/unit_test_data"
+  csv_file = dir + "/example.csv"
+  bin_file = dir + "/example.bin"
+  mtx_file = dir + "/example.mtx"
+  spread_file = dir + "/spread_example.csv"
+  array = null
+  array.ID = {1, 2, 3}
+  array.HH = {4, 5, 6}
+
+  // Create data frame
+  df = CreateObject("df", array)
+
+  // test check (which is called by mutate)
+  /*df.mutate("bad1", 5)      // raises a type error*/
+  /*df.mutate("bad2", {1, 2}) // raises a length error*/
+
+  // test nrow/ncol
+  if df.nrow() <> 3 then Throw("test: nrow failed")
+  if df.ncol() <> 2 then Throw("test: ncol failed")
+
+  // test copy
+  new_df = df.copy()
+  new_df.tbl.ID = null
+  colnames = df.colnames()
+  if colnames.length <> 2 then Throw("test: copy failed")
+
+  // test addition
+  df.mutate("addition", df.tbl.ID + df.tbl.HH)
+  /*
+  Addition can also be done like so, but mutate() builds in an auto check()
+  df.tbl.addition = df.tbl.ID + df.tbl.HH
+  */
+  answer = {5, 7, 9}
+  for a = 1 to answer.length do
+    if df.tbl.addition[a] <> answer[a] then Throw("test: mutate failed")
+  end
+
+  // test colnames
+  df = CreateObject("df")
+  df.read_mtx(mtx_file)
+  names = {"a", "b", "c", "d"}
+  df.colnames(names)
+  check = df.colnames()
+  for a = 1 to names.length do
+    if check[a] <> names[a] then Throw("test: colnames failed")
+  end
+
+  // test read_csv and read_bin (which test read_view)
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  answer = {1, 2, 3}
+  for a = 1 to answer.length do
+    if df.tbl.ID[a] <> answer[a] then Throw("test: read_csv failed")
+  end
+  df = null
+  df = CreateObject("df")
+  df.read_bin(bin_file)
+  for a = 1 to answer.length do
+    if df.tbl.ID[a] <> answer[a] then Throw("test: read_bin failed")
+  end
+
+  // test write_csv
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  test_csv = dir + "/write_csv output.csv"
+  df.write_csv(test_csv)
+  df = CreateObject("df")
+  df.read_csv(test_csv)
+  DeleteFile(test_csv)
+  if df.ncol() <> 2 then Throw("test: write_csv failed")
+
+  // test read_mtx (and read_cur)
+  df = CreateObject("df")
+  df.read_mtx(mtx_file)
+  answer = {1, 2, 3, 4}
+  for a = 1 to answer.length do
+    if df.tbl.value[a] <> answer[a] then Throw("test: read_view failed")
+  end
+
+  // test select
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  df.select("Data")
+  answer_length = 1
+  answer_name = "Data"
+  colnames = df.colnames()
+  if colnames.length <> answer_length or colnames[1] <> answer_name
+    then Throw("test: select failed")
+
+  // test in
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  tf = df.in({5, 6}, df.tbl.Data)
+  if tf <> "True" then Throw("test: in() failed")
+  tf = df.in(5, df.tbl.Data)
+  if tf <> "True" then Throw("test: in() failed")
+  tf = df.in("a", df.tbl.Data)
+  if tf <> "False" then Throw("test: in() failed")
+
+  // test group_by and summarize
+  df = CreateObject("df")
+  df.read_mtx(mtx_file)
+  df.group_by("TO")
+  opts = null
+  opts.value = {"sum"}
+  df.summarize(opts)
+  answer = {4, 6}
+  for a = 1 to answer.length do
+    if df.tbl.sum_value[a] <> answer[a] then Throw("test: summarize() failed")
+  end
+
+  // test filter
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  df.filter("ID = 1")
+  if df.tbl.ID[1] <> 1 then Throw("test: filter() failed")
+
+  // test left_join
+  master = CreateObject("df")
+  master.read_csv(csv_file)
+  slave = CreateObject("df")
+  slave.read_mtx(mtx_file)
+  master.left_join(slave, "ID", "FROM")
+  answer = {"ID", "Data", "TO", "value", "second_core"}
+  for a = 1 to answer.length do
+    if master.tbl[a][1] <> answer[a] then Throw("test: left_join() failed")
+  end
+
+  // test unite and separate
+  df = CreateObject("df")
+  df.read_mtx(mtx_file)
+  df.unite({"FROM", "TO"}, "comb")
+  answer = {"1_1", "1_2", "2_1", "2_2"}
+  for a = 1 to answer.length do
+    if df.tbl.comb[a] <> answer[a] then Throw("test: unite() failed")
+  end
+  df.separate("comb", {"a", "b"})
+  answer = {1, 1, 2, 2}
+  for a = 1 to answer.length do
+    if df.tbl.a[a] <> answer[a] then Throw("test: separate() failed")
+  end
+
+  // test spread
+  df = CreateObject("df")
+  df.read_csv(spread_file)
+  df.spread("Color", "Count", 0)
+  if df.tbl[2][1] <> "Blue" then Throw("test: spread() failed")
+  answer = {0, 115, 25}
+  for a = 1 to answer.length do
+    if df.tbl.Blue[a] <> answer[a] then Throw("test: spread() failed")
+  end
+  // Add arbitrary numeric column and re-test
+  df = CreateObject("df")
+  df.read_csv(spread_file)
+  df.mutate("arbitrary", {1, 2, 3, 4, 5, 6})
+  df.spread("Color", "Count", 0)
+  if df.tbl[3][1] <> "Blue" then Throw("test: spread() failed")
+  answer = {0, 0, 115, 0, 0, 25}
+  for a = 1 to answer.length do
+    if df.tbl.Blue[a] <> answer[a] then Throw("test: spread() failed")
+  end
+
+  // test bind_rows
+  df = CreateObject("df")
+  df.read_csv(csv_file)
+  df2 = CreateObject("df")
+  df2.read_csv(csv_file)
+  df.bind_rows(df2)
+  if df.tbl[2][1] <> "Data" then Throw("test: bind_rows() failed")
+  answer = {4, 5, 6, 4, 5, 6}
+  for a = 1 to answer.length do
+    if df.tbl.Data[a] <> answer[a] then Throw("test: bind_rows() failed")
+  end
+
+  ShowMessage("Passed Tests")
+EndMacro
