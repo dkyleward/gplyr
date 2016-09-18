@@ -8,9 +8,9 @@ A basic set of unit tests is maintained in the macro "test". At least one for ea
 ## Creation
 Create a data frame object in GISDK code with the following code
 
-`df = CreateObject("df", tbl)`
+`df = CreateObject("df")`
 
-`tbl` is an optional argument that loads the data frame with information.  By default, the data frame is created empty, and one of the input methods below adds data.
+By default, the data frame is created empty, and one of the input methods below adds data.
 
 ## Methods
 This section provides a simple list of methods to give an idea of what is available.  A wiki will be created to provide proper documentation and examples for each method.
