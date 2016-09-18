@@ -9,6 +9,7 @@ Macro "test"
   csv_file = dir + "/example.csv"
   bin_file = dir + "/example.bin"
   mtx_file = dir + "/example.mtx"
+  spread_file = dir + "/spread_example.csv"
   array = null
   array.ID = {1, 2, 3}
   array.HH = {4, 5, 6}
@@ -144,6 +145,26 @@ Macro "test"
   answer = {1, 1, 2, 2}
   for a = 1 to answer.length do
     if df.tbl.a[a] <> answer[a] then Throw("test: separate() failed")
+  end
+
+  // test spread
+  df = CreateObject("df")
+  df.read_csv(spread_file)
+  df.spread("Color", "Count", 0)
+  if df.tbl[2][1] <> "Blue" then Throw("test: spread() failed")
+  answer = {0, 115, 25}
+  for a = 1 to answer.length do
+    if df.tbl.Blue[a] <> answer[a] then Throw("test: spread() failed")
+  end
+  // Add arbitrary numeric column and re-test
+  df = CreateObject("df")
+  df.read_csv(spread_file)
+  df.mutate("arbitrary", {1, 2, 3, 4, 5, 6})
+  df.spread("Color", "Count", 0)
+  if df.tbl[3][1] <> "Blue" then Throw("test: spread() failed")
+  answer = {0, 0, 115, 0, 0, 25}
+  for a = 1 to answer.length do
+    if df.tbl.Blue[a] <> answer[a] then Throw("test: spread() failed")
   end
 
   ShowMessage("Passed Tests")
@@ -968,6 +989,85 @@ Class "df" (tbl)
 
     // remove original column
     self.tbl.(col) = null
+  EndItem
+
+  /*
+  Place holder for notes about spread()
+  - create columns for each unique value of key
+  - fill each with values where the key is matched
+  - create a new field that unites non-key/value columns
+  - start a new data frame with just that field
+  - use that to perform joins
+  - then separate
+  */
+
+  Macro "spread" (key, value, fill) do
+
+    // Argument check
+    if key = null then Throw("spread: `key` missing")
+    if value = null then Throw("spread: `value` missing")
+    if !self.in(key, self.colnames()) then Throw("spread: `key` not in table")
+    if !self.in(value, self.colnames()) then
+      Throw("spread: `value` not in table")
+
+    // Create a single-column data frame that concatenates all fields
+    // except for key and value
+    first_col = self.copy()
+    first_col.tbl.(key) = null
+    first_col.tbl.(value) = null
+    // If more than one field remains in the table, unite them
+    if first_col.ncol() > 1 then do
+      unite = "True"
+      join_col = "unite"
+      a_unite_cols = first_col.colnames()
+      first_col.unite(a_unite_cols, join_col)
+      first_col.select(join_col)
+    end else do
+      join_col = first_col.colnames()
+      join_col = join_col[1]
+    end
+    opts = null
+    opts.Unique = "True"
+    vec = SortVector(first_col.tbl.(join_col), opts)
+    first_col.mutate(join_col, vec)
+
+    // Create a second working table.
+    split = self.copy()
+    // If necessary, combine columns in `split` to match `first_col` table
+    if unite then split.unite(a_unite_cols, join_col)
+    opts = null
+    opts.Unique = "True"
+    a_unique_keys = SortVector(split.tbl.(key), opts)
+    for k = 1 to a_unique_keys.length do
+      key_val = a_unique_keys[k]
+
+      // TransCAD requires field names to look like strings.
+      // Add an "s" at start of name if needed.
+      col_name = if TypeOf(key_val) <> "string"
+        then "s" + String(key_val)
+        else key_val
+
+      temp = if split.tbl.(key) = key_val then split.tbl.(value) else null
+      split.mutate(col_name, temp)
+
+      // Create a sub table from `split` and join it to `first_col`
+      sub = split.copy()
+      sub.select({join_col, col_name})
+      sub.filter(col_name + " <> null")
+      first_col.left_join(sub, join_col, join_col)
+
+      // Fill in any null values with `fill`
+      first_col.tbl.(col_name) = if first_col.tbl.(col_name) = null
+        then fill
+        else first_col.tbl.(col_name)
+    end
+
+    // Create final table
+    self.tbl = null
+    self.tbl.(join_col) = first_col.tbl.(join_col)
+    if unite then self.separate(join_col, a_unite_cols)
+    first_col.tbl.(join_col) = null
+    self.tbl = InsertArrayElements(self.tbl, self.tbl.length + 1, first_col.tbl)
   EndItem
 
 endClass
