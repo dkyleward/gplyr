@@ -190,18 +190,6 @@ Class "df" (tbl)
   EndItem
 
   /*
-  Removes a column from a data frame
-  */
-  Macro "remove" (col_name) do
-
-    // Argument check
-    if !self.in(col_name, self.colnames())
-      then Throw("remove: '" + col_name + "' not found in data frame")
-
-    self.tbl.(col_name) = null
-  EndItem
-
-  /*
   file
     String
     full path of csv file
@@ -461,7 +449,7 @@ Class "df" (tbl)
     fields to drop from the data frame
   */
 
-  Macro "drop" (fields) do
+  Macro "remove" (fields) do
 
     // Argument checking and type handling
     if fields = null then Throw("drop: no fields provided")
