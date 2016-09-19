@@ -626,7 +626,11 @@ Class "df" (tbl)
       end
     end
 
+    // Clean up workspace
+    CloseView(view)
     CloseView(agg_view)
+    DeleteFile(file_name)
+    DeleteFile(Substitute(file_name, ".bin", ".DCB", ))
   EndItem
 
   /*
