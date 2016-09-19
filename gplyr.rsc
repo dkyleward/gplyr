@@ -375,7 +375,7 @@ Class "df" (tbl)
       Throw("read_mtx: 'cores' must be either an array, string, or null")
     for c = 1 to cores.length do
       if !self.in(cores[c], a_corenames)
-        then Throw("read_mtx: core '" + cores[c] + " not found in matrix")
+        then Throw("read_mtx: core '" + cores[c] + "' not found in matrix")
     end
     {d_ri, d_ci} = GetMatrixIndex(mtx)
     if ri = null then ri = d_ri
@@ -485,27 +485,33 @@ Class "df" (tbl)
   /*
   Checks if a value is listed anywhere in the vector.
 
-  value
+  find
     String, numeric, array, or vector
     The value to search for
 
-  array
-    Array or vector
-    The array to search in
+  space
+    Array, vector, or string
+    The search space.
+    If string, `find` must be string.
 
   Returns True/False
   */
 
-  Macro "in" (value, array) do
+  Macro "in" (find, space) do
 
     // Argument check
-    if value = null then Throw("in: value not provided")
-    if TypeOf(array) = "vector" then array = V2A(array)
-    if array = null then Throw("in: array not provided")
-    if TypeOf(value) = "vector" then value = V2A(value)
-    else if TypeOf(value) <> "array" then value = {value}
+    if TypeOf(find) = "vector" then find = V2A(find)
+    if find = null then Throw("in: 'find' not provided")
+    if TypeOf(space) = "vector" then space = V2A(space)
+    if space = null then Throw("in: 'space' not provided")
+    if TypeOf(space) = "array" and TypeOf(find) <> "array"
+      then find = {find}
+    if TypeOf(space) = "string" and TypeOf(find) <> "string"
+      then Throw("in: if variable 'space' is a string, `find` must be a string")
 
-    tf = if ArrayPosition(array, value, ) <> 0 then "True" else "False"
+    if TypeOf(space) = "string"
+      then tf = if Position(space, find) <> 0 then "True" else "False"
+      else tf = if ArrayPosition(space, find, ) <> 0 then "True" else "False"
     return(tf)
   EndItem
 
@@ -701,6 +707,16 @@ Class "df" (tbl)
         self.tbl.(s) = null
       end
     end
+
+    // Check for any other duplicate names.  TC will treat them
+    // the same way.  Replace the default name with a .x and .y
+    // suffix.
+    /*a_colnames = self.colnames()
+    for c = 1 to a_colnames.length do
+      colname = a_colnames[c]
+
+      master_test =
+    end*/
 
     // Clean up the workspace
     CloseView(jv)
@@ -1029,11 +1045,13 @@ Macro "test"
   df = CreateObject("df")
   df.read_csv(csv_file)
   tf = df.in({"Red", "Yellow"}, df.tbl.Color)
-  if tf <> "True" then Throw("test: in() failed")
+  if !tf then Throw("test: in() failed")
   tf = df.in(50, df.tbl.Count)
-  if tf <> "True" then Throw("test: in() failed")
+  if !tf then Throw("test: in() failed")
   tf = df.in("a", df.tbl.Count)
-  if tf <> "False" then Throw("test: in() failed")
+  if tf then Throw("test: in() failed")
+  tf = df.in("test", "testing")
+  if !tf then Throw("test: in() failed")
 
   // test group_by and summarize
   df = CreateObject("df")
