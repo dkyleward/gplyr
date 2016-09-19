@@ -698,6 +698,30 @@ Class "df" (tbl)
     if m_id.length <> s_id.length then
       Throw("left_join: 'm_id' and 's_id' are not the same length")
 
+    // Create dup_fields
+    // an array of fields that will be duplicated
+    // after the join (that aren't in m_id or s_id)
+    m_fields = self.colnames()
+    m_result = CopyArray(m_fields)
+    s_fields = slave_tbl.colnames()
+    s_result = CopyArray(s_fields)
+    for i = 1 to m_id.length do
+      m = m_id[i]
+      s = s_id[i]
+
+      pos = ArrayPosition(m_result, {m}, )
+      m_result = ExcludeArrayElements(m_result, pos, 1)
+      pos = ArrayPosition(s_result, {s}, )
+      s_result = ExcludeArrayElements(s_result, pos, 1)
+    end
+    if m_result.length > 0 then do
+      for i = 1 to m_result.length do
+        field = m_result[i]
+
+        if self.in(field, s_result) then dup_fields = dup_fields + {field}
+      end
+    end
+
     {master_view, master_file} = self.create_view()
     {slave_view, slave_file} = slave_tbl.create_view()
 
@@ -721,31 +745,27 @@ Class "df" (tbl)
 
       if m = s then do
         // Rename master field
-        current_name = "[" + master_view + "]." + m
+        current_name = master_view + "." + m
         self.rename(current_name, m)
         // Delete slave field
-        self.tbl.("[" + slave_view + "]." + s) = null
+        self.tbl.(slave_view + "." + s) = null
       end else do
         // Delete slave field
         self.tbl.(s) = null
       end
     end
 
-    // Check for any other duplicate names.  TC will treat them
-    // the same way.  Replace the default name with a .x and .y
-    // suffix.
-    a_colnames = self.colnames()
-    for c = 1 to a_colnames.length do
-      colname = a_colnames[c]
+    // Handle any other duplicate fields.
+    // Replace the default name with a .x and .y suffix.
+    for d = 1 to dup_fields.length do
+      field = dup_fields[d]
 
-      if self.in(master_view, colname) then do
-        {first_half, second_half} = ParseString(colname, ".")
-        self.rename(colname, second_half + ".x")
-      end
-      if self.in(slave_view, colname) then do
-        {first_half, second_half} = ParseString(colname, ".")
-        self.rename(colname, second_half + ".y")
-      end
+      current_name = master_view + "." + field
+      new_name = field + ".x"
+      self.rename(current_name, new_name)
+      current_name = slave_view + "." + field
+      new_name = field + ".y"
+      self.rename(current_name, new_name)
     end
 
     // Clean up the workspace
