@@ -675,6 +675,11 @@ Class "df" (tbl)
     SelectByQuery("set", "Several", query)
     self.tbl = null
     self.read_view(view, "set")
+
+    // Clean up workspace
+    CloseView(view)
+    DeleteFile(file)
+    DeleteFile(Substitute(file, ".bin", ".DCB", ))
   EndItem
 
 
