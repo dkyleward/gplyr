@@ -352,8 +352,7 @@ Class "df" (tbl)
 
   ri and ci
     String
-    Row and column indicies to use.  Defaults to the default
-    indices.
+    Row and column indicies to use.  Defaults to the default indices.
 
   all_cells
     "Yes" or "No"
@@ -452,7 +451,7 @@ Class "df" (tbl)
   Macro "remove" (fields) do
 
     // Argument checking and type handling
-    if fields = null then Throw("drop: no fields provided")
+    if fields = null then Throw("remove: no fields provided")
     if TypeOf(fields) = "string" then fields = {fields}
 
     for f = 1 to fields.length do
@@ -479,7 +478,7 @@ Class "df" (tbl)
     for f = 1 to colnames.length do
       colname = colnames[f]
 
-      if ArrayPosition(fields, {colname}, ) = 0 then self.drop(colname)
+      if ArrayPosition(fields, {colname}, ) = 0 then self.remove(colname)
     end
   EndItem
 
@@ -942,7 +941,6 @@ Macro "test"
   csv_file = dir + "/example.csv"
   bin_file = dir + "/example.bin"
   mtx_file = dir + "/example.mtx"
-  spread_file = dir + "/spread_example.csv"
   array = null
   array.ID = {1, 2, 3}
   array.HH = {4, 5, 6}
@@ -988,15 +986,15 @@ Macro "test"
   // test read_csv and read_bin (which test read_view)
   df = CreateObject("df")
   df.read_csv(csv_file)
-  answer = {1, 2, 3}
+  answer = {50, 75, 25, 100, 115, 35}
   for a = 1 to answer.length do
-    if df.tbl.ID[a] <> answer[a] then Throw("test: read_csv failed")
+    if df.tbl.Count[a] <> answer[a] then Throw("test: read_csv failed")
   end
   df = null
   df = CreateObject("df")
   df.read_bin(bin_file)
   for a = 1 to answer.length do
-    if df.tbl.ID[a] <> answer[a] then Throw("test: read_bin failed")
+    if df.tbl.Count[a] <> answer[a] then Throw("test: read_bin failed")
   end
 
   // test write_csv
@@ -1007,9 +1005,9 @@ Macro "test"
   df = CreateObject("df")
   df.read_csv(test_csv)
   DeleteFile(test_csv)
-  if df.ncol() <> 2 then Throw("test: write_csv failed")
+  if df.ncol() <> 3 then Throw("test: write_csv failed")
 
-  // test read_mtx (and read_cur)
+  // test read_mtx
   df = CreateObject("df")
   df.read_mtx(mtx_file)
   answer = {1, 2, 3, 4}
@@ -1020,9 +1018,9 @@ Macro "test"
   // test select
   df = CreateObject("df")
   df.read_csv(csv_file)
-  df.select("Data")
+  df.select("Count")
   answer_length = 1
-  answer_name = "Data"
+  answer_name = "Count"
   colnames = df.colnames()
   if colnames.length <> answer_length or colnames[1] <> answer_name
     then Throw("test: select failed")
@@ -1030,37 +1028,39 @@ Macro "test"
   // test in
   df = CreateObject("df")
   df.read_csv(csv_file)
-  tf = df.in({5, 6}, df.tbl.Data)
+  tf = df.in({"Red", "Yellow"}, df.tbl.Color)
   if tf <> "True" then Throw("test: in() failed")
-  tf = df.in(5, df.tbl.Data)
+  tf = df.in(50, df.tbl.Count)
   if tf <> "True" then Throw("test: in() failed")
-  tf = df.in("a", df.tbl.Data)
+  tf = df.in("a", df.tbl.Count)
   if tf <> "False" then Throw("test: in() failed")
 
   // test group_by and summarize
   df = CreateObject("df")
-  df.read_mtx(mtx_file)
-  df.group_by("TO")
+  df.read_csv(csv_file)
+  df.group_by("Color")
   opts = null
-  opts.value = {"sum"}
+  opts.Count = {"sum", "avg"}
   df.summarize(opts)
-  answer = {4, 6}
-  for a = 1 to answer.length do
-    if df.tbl.sum_value[a] <> answer[a] then Throw("test: summarize() failed")
+  answer1 = {140, 150, 110}
+  answer2 = {70, 75, 55}
+  for a = 1 to answer1.length do
+    if df.tbl.sum_Count[a] <> answer1[a] then Throw("test: summarize() failed")
+    if df.tbl.avg_Count[a] <> answer2[a] then Throw("test: summarize() failed")
   end
 
   // test filter
   df = CreateObject("df")
   df.read_csv(csv_file)
-  df.filter("ID = 1")
-  if df.tbl.ID[1] <> 1 then Throw("test: filter() failed")
+  df.filter("Color = 'Blue'")
+  if df.tbl.Color.length <> 2 then Throw("test: filter() failed")
 
   // test left_join
   master = CreateObject("df")
   master.read_csv(csv_file)
-  slave = CreateObject("df")
-  slave.read_mtx(mtx_file)
-  master.left_join(slave, "ID", "FROM")
+  slave = master.copy()
+  master.left_join(slave, "Size", "Size")
+  master.create_editor()
   answer = {"ID", "Data", "TO", "value", "second_core"}
   for a = 1 to answer.length do
     if master.tbl[a][1] <> answer[a] then Throw("test: left_join() failed")
@@ -1082,7 +1082,7 @@ Macro "test"
 
   // test spread
   df = CreateObject("df")
-  df.read_csv(spread_file)
+  df.read_csv(csv_file)
   df.spread("Color", "Count", 0)
   if df.tbl[2][1] <> "Blue" then Throw("test: spread() failed")
   answer = {0, 115, 25}
@@ -1091,7 +1091,7 @@ Macro "test"
   end
   // Add arbitrary numeric column and re-test
   df = CreateObject("df")
-  df.read_csv(spread_file)
+  df.read_csv(csv_file)
   df.mutate("arbitrary", {1, 2, 3, 4, 5, 6})
   df.spread("Color", "Count", 0)
   if df.tbl[3][1] <> "Blue" then Throw("test: spread() failed")
