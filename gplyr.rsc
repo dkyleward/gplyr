@@ -711,12 +711,19 @@ Class "df" (tbl)
     // Check for any other duplicate names.  TC will treat them
     // the same way.  Replace the default name with a .x and .y
     // suffix.
-    /*a_colnames = self.colnames()
+    a_colnames = self.colnames()
     for c = 1 to a_colnames.length do
       colname = a_colnames[c]
 
-      master_test =
-    end*/
+      if self.in(master_view, colname) then do
+        {first_half, second_half} = ParseString(colname, ".")
+        self.rename(colname, second_half + ".x")
+      end
+      if self.in(slave_view, colname) then do
+        {first_half, second_half} = ParseString(colname, ".")
+        self.rename(colname, second_half + ".y")
+      end
+    end
 
     // Clean up the workspace
     CloseView(jv)
@@ -1077,11 +1084,11 @@ Macro "test"
   master = CreateObject("df")
   master.read_csv(csv_file)
   slave = master.copy()
-  master.left_join(slave, "Size", "Size")
-  master.create_editor()
-  answer = {"ID", "Data", "TO", "value", "second_core"}
+  master.left_join(slave, {"Size", "Color"}, {"Size", "Color"})
+  answer = {50, 75, 25, 100, 115, 35}
+  result = master.tbl.("Count.y")
   for a = 1 to answer.length do
-    if master.tbl[a][1] <> answer[a] then Throw("test: left_join() failed")
+    if result[a] <> answer[a] then Throw("test: left_join() failed")
   end
 
   // test unite and separate
