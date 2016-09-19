@@ -1131,10 +1131,10 @@ Macro "test"
   df2 = CreateObject("df")
   df2.read_csv(csv_file)
   df.bind_rows(df2)
-  if df.tbl[2][1] <> "Data" then Throw("test: bind_rows() failed")
-  answer = {4, 5, 6, 4, 5, 6}
+  if df.tbl[3][1] <> "Count" then Throw("test: bind_rows() failed")
+  answer = {50, 75, 25, 100, 115, 35, 50, 75, 25, 100, 115, 35}
   for a = 1 to answer.length do
-    if df.tbl.Data[a] <> answer[a] then Throw("test: bind_rows() failed")
+    if df.tbl.Count[a] <> answer[a] then Throw("test: bind_rows() failed")
   end
 
   ShowMessage("Passed Tests")
