@@ -415,10 +415,29 @@ Class "df" (tbl)
 
   Macro "create_view" do
 
-    // Convert the data frame object into a CSV and open the view
+    // Convert the data frame object into a CSV
     tempFile = GetTempFileName(".bin")
     self.write_bin(tempFile)
-    view_name = OpenTable("bin", "FFB", {tempFile}, )
+
+    // Avoid duplciating view names by using an
+    // odd name and adding a number based on views open.
+    // Check to make sure view does not already exist.
+    view_names = GetViews()
+    if view_names.length = 0 then do
+      view_name = "gplyr1"
+    end else do
+      view_names = view_names[1]
+      num = view_names.length
+      exists = "True"
+      while exists do
+        num = num + 1
+        view_name = "gplyr" + String(num)
+        exists = if (ArrayPosition(view_names, {view_name}, ) <> 0)
+          then "True"
+          else "False"
+      end
+    end
+    view_name = OpenTable(view_name, "FFB", {tempFile}, )
 
     return({view_name, tempFile})
   EndItem
