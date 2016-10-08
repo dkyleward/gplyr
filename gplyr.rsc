@@ -120,6 +120,9 @@ Class "df" (tbl)
   Macro "check" do
     if self.is_empty() then return()
 
+    // Make sure that tbl property is an array
+    if TypeOf(self.tbl) <> "array" then Throw("'tbl' property is not an array")
+
     // Convert all columns to vectors and check length
     for i = 1 to self.tbl.length do
       colname = self.tbl[i][1]
@@ -127,8 +130,8 @@ Class "df" (tbl)
       // Type check
       type = TypeOf(self.tbl.(colname))
       if type <> "vector" then do
-        if type = "array" then self.tbl.(colname) = A2V(self.tbl.(colname))
-        else Throw("check: '" + colname + "' is neither an array nor vector")
+        if type <> "array" then self.tbl.(colname) = {self.tbl.(colname)}
+        self.tbl.(colname) = A2V(self.tbl.(colname))
       end
 
       // Length check
