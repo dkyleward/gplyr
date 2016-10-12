@@ -867,11 +867,13 @@ Class "df" (tbl)
         value = parts[p]
 
         // Convert any string-number into a number
-        value = if value = "0"
-          then 0
-          else if Value(value) = 0
-            then value
-            else Value(value)
+        if TypeOf(value) = "string" then do
+          value = if value = "0"
+            then 0
+            else if Value(value) = 0
+              then value
+              else Value(value)
+        end
 
         array[p][r] = value
       end
