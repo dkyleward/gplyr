@@ -711,9 +711,9 @@ Class "df" (tbl)
     // Create dup_fields
     // an array of fields that will be duplicated
     // after the join (that aren't in m_id or s_id)
-    m_fields = self.colnames()
+    m_fields = V2A(self.colnames())
     m_result = CopyArray(m_fields)
-    s_fields = slave_tbl.colnames()
+    s_fields = V2A(slave_tbl.colnames())
     s_result = CopyArray(s_fields)
     for i = 1 to m_id.length do
       m = m_id[i]
@@ -792,7 +792,7 @@ Class "df" (tbl)
   Concatenates multiple column values into a single column
 
   cols
-    Array of strings
+    Vector or array of strings
     column names to unite
 
   new_col
@@ -809,7 +809,9 @@ Class "df" (tbl)
 
     // Argument check
     if sep = null then sep = "_"
-    if cols = null then Throw("unite: `cols` not provided")
+    if TypeOf(cols) = "vector" then cols = V2A(cols)
+    if TypeOf(cols) <> "array"
+      then Throw("unite: 'cols' must be an array or vector")
     if new_col = null then Throw("unite: `new_col` not provided")
     if TypeOf(cols) <> "array" then Throw("unite: `cols` must be an array")
 
@@ -846,9 +848,12 @@ Class "df" (tbl)
 
     // Argument check
     if sep = null then sep = "_"
-    if col = null then Throw("unite: `col` not provided")
-    if new_cols = null then Throw("unite: `new_cols` not provided")
-    if TypeOf(new_cols) <> "array" then Throw("unite: `new_cols` must be an array")
+    if col = null then Throw("separate: `col` not provided")
+    if TypeOf(new_cols) = "vector" then new_cols = V2A(new_cols)
+    if TypeOf(new_cols) <> "array"
+      then Throw("separate: 'new_cols' must be an array or vector")
+    if TypeOf(new_cols) <> "array"
+      then Throw("separate: `new_cols` must be an array")
     vec = self.tbl.(col)
     if TypeOf(vec[1]) <> "string" then
       Throw("separate: column '" + col + "' doesn't contain strings")
