@@ -63,13 +63,13 @@ Class "df" (tbl)
 
   /*
   Either:
-    Returns array of all column names
+    Returns vector of all column names
     Sets all column names
 
   Use rename() to change individual column names
 
   names
-    Array of strings
+    Array or vector of strings
     If provided, the method will set the column names instead of
     retrieve them
   */
@@ -78,8 +78,9 @@ Class "df" (tbl)
     // Argument checking
     if self.is_empty() then return()
     if names <> null then do
+      if TypeOf(names) = "vector" then names = V2A(names)
       if TypeOf(names) <> "array" then
-        Throw("colnames: if provided, 'names' argument must be an array")
+        Throw("colnames: if provided, 'names' argument must be a vector or array")
       if names.length <> self.ncol() then
         Throw("colnames: 'names' length does not match number of columns")
     end
@@ -88,12 +89,13 @@ Class "df" (tbl)
       for c = 1 to self.ncol() do
         a_colnames = a_colnames + {self.tbl[c][1]}
       end
-      return(a_colnames)
     end else do
       for c = 1 to names.length do
         self.tbl[c][1] = names[c]
       end
     end
+
+    if names = null then return(A2V(a_colnames))
   EndItem
 
   /*
