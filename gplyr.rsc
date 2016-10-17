@@ -130,14 +130,15 @@ Class "df" (tbl)
       colname = self.tbl[i][1]
 
       // Type check
-      type = TypeOf(self.tbl.(colname))
+      type = TypeOf(self.tbl.("[" + colname + "]"))
       if type <> "vector" then do
-        if type <> "array" then self.tbl.(colname) = {self.tbl.(colname)}
-        self.tbl.(colname) = A2V(self.tbl.(colname))
+        if type <> "array"
+          then self.tbl.("[" + colname + "]") = {self.tbl.("[" + colname + "]")}
+        self.tbl.("[" + colname + "]") = A2V(self.tbl.("[" + colname + "]"))
       end
 
       // Length check
-      if self.tbl.(colname).length <> self.nrow() then
+      if self.tbl.("[" + colname + "]").length <> self.nrow() then
         Throw("check: '" + colname + "' has different length than first column")
     end
   EndItem
