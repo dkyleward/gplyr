@@ -499,13 +499,6 @@ Class "df" (tbl)
     if fields = null then Throw("select: no fields provided")
     if TypeOf(fields) = "string" then fields = {fields}
 
-    /*colnames = self.colnames()
-    for f = 1 to colnames.length do
-      colname = colnames[f]
-
-      if ArrayPosition(fields, {colname}, ) = 0 then self.remove(colname)
-    end*/
-
     data = null
     for f = 1 to fields.length do
       field = fields[f]
