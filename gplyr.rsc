@@ -524,7 +524,7 @@ Class "df" (tbl)
     for f = 1 to fields.length do
       field = fields[f]
 
-      data.(field) = self.tbl.(field)
+      data.(field) = self.tbl.(self.check_name(field))
     end
     self.tbl = data
   EndItem
@@ -1130,9 +1130,9 @@ Macro "test"
   // test select
   df = CreateObject("df")
   df.read_csv(csv_file)
-  df.select("Count")
+  df.select("Length")
   answer_length = 1
-  answer_name = "Count"
+  answer_name = "Length"
   colnames = df.colnames()
   if colnames.length <> answer_length or colnames[1] <> answer_name
     then Throw("test: select failed")
