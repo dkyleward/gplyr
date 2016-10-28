@@ -302,27 +302,43 @@ Class "df" (tbl)
   Converts a view into a table object.
   Useful if you want to specify a selection set.
 
-  view
-    String
-    TC view name
-  set
-    String
-    optional set name
+  MacroOpts
+    view
+      String
+      TC view name
+    set
+      Optional string
+      set name
+    fields
+      Optional string or array/vector of strings
+      Array/Vector of columns to read. If null, all columns are read.
   */
 
-  Macro "read_view" (view, set) do
+  Macro "read_view" (MacroOpts) do
+
+    view = MacroOpts.view
+    set = MacroOpts.set
+    fields = MacroOpts.fields
 
     // Check for required arguments and
     // that data frame is currently empty
     if view = null
       then Throw("read_view: Required argument 'view' missing.")
     if !self.is_empty() then Throw("read_view: data frame must be empty")
+    if fields <> null then do
+      if TypeOf(fields) = "string" then fields = {fields}
+      if TypeOf(fields) = "vector" then fields = V2A(fields)
+      if TypeOf(fields) <> "array"
+        then Throw("read_view: 'fields' must be string, vector, or array")
+    end
 
-    a_fields = GetFields(view, )
-    a_fields = a_fields[1]
+    if fields = null then do
+      fields = GetFields(view, )
+      fields = fields[1]
+    end
 
-    for f = 1 to a_fields.length do
-      field = a_fields[f]
+    for f = 1 to fields.length do
+      field = fields[f]
 
       // When a view has too many rows, a "???" will appear in the editor
       // meaning that TC did not load the entire view into memory.
@@ -348,9 +364,10 @@ Class "df" (tbl)
     ext = ext[2]
     if ext <> "bin" then Throw("read_bin: file not a .bin")
 
-    view = OpenTable("view", "FFB", {file})
-    self.read_view(view)
-    CloseView(view)
+    opts = null
+    opts.view = OpenTable("view", "FFB", {file})
+    self.read_view(opts)
+    CloseView(opts.view)
   EndItem
   Macro "read_csv" (file) do
     // Check extension
@@ -358,9 +375,10 @@ Class "df" (tbl)
     ext = a_parts[2]
     if ext <> "csv" then Throw("read_csv: file not a .csv")
 
-    view = OpenTable("view", "CSV", {file})
-    self.read_view(view)
-    CloseView(view)
+    opts = null
+    opts.view = OpenTable("view", "CSV", {file})
+    self.read_view(opts)
+    CloseView(opts.view)
 
     // Remove the .DCC
     DeleteFile(Substitute(file, ".csv", ".DCC", ))
@@ -639,7 +657,9 @@ Class "df" (tbl)
 
     // Read the view back into the data frame
     self.tbl = null
-    self.read_view(agg_view)
+    opts = null
+    opts.view = agg_view
+    self.read_view(opts)
 
     // The field names from SelfAggregate() are messy.  Clean up.
     // The first fields will be of the format "GroupedBy(ID)".
@@ -702,7 +722,10 @@ Class "df" (tbl)
     query = "Select * where " + query
     SelectByQuery("set", "Several", query)
     self.tbl = null
-    self.read_view(view, "set")
+    opts = null
+    opts.view = view
+    opts.set = "set"
+    self.read_view(opts)
 
     // Clean up workspace
     CloseView(view)
@@ -767,7 +790,9 @@ Class "df" (tbl)
 
     jv = JoinViewsMulti("jv", m_spec, s_spec, )
     self.tbl = null
-    self.read_view(jv)
+    opts = null
+    opts.view = jv
+    self.read_view(opts)
 
     // JoinViewsMulti() will attach the view names to the m_id and s_id fields
     // if they are the same.
