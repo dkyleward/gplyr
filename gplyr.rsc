@@ -34,6 +34,25 @@ Class "df" (tbl)
   EndItem
 
   /*
+  Checks a column name to see if it is reserved.  If so, the name
+  is bracketed.
+
+  Returns
+    field_name
+    The field name with brackets if appropriate.
+  */
+
+  Macro "check_name" (field_name) do
+
+    a_reserved = {"length"}
+    field_name = if self.in(field_name, a_reserved)
+      then "[" + field_name + "]"
+      else field_name
+
+    return(field_name)
+  EndItem
+
+  /*
   This creates a complete copy of the data frame.  If you try
 
   new_df = old_df
@@ -127,18 +146,18 @@ Class "df" (tbl)
 
     // Convert all columns to vectors and check length
     for i = 1 to self.tbl.length do
-      colname = self.tbl[i][1]
+      colname = self.check_name(self.tbl[i][1])
 
       // Type check
-      type = TypeOf(self.tbl.("[" + colname + "]"))
+      type = TypeOf(self.tbl.(colname))
       if type <> "vector" then do
         if type <> "array"
-          then self.tbl.("[" + colname + "]") = {self.tbl.("[" + colname + "]")}
-        self.tbl.("[" + colname + "]") = A2V(self.tbl.("[" + colname + "]"))
+          then self.tbl.(colname) = {self.tbl.(colname)}
+        self.tbl.(colname) = A2V(self.tbl.(colname))
       end
 
       // Length check
-      if self.tbl.("[" + colname + "]").length <> self.nrow() then
+      if self.tbl.(colname).length <> self.nrow() then
         Throw("check: '" + colname + "' has different length than first column")
     end
   EndItem
@@ -232,7 +251,9 @@ Class "df" (tbl)
     for r = 1 to self.nrow() do
       line = null
       for c = 1 to colnames.length do
-        vec = self.tbl.(colnames[c])
+        colname = self.check_name(colnames[c])
+
+        vec = self.tbl.(colname)
         type = vec.type
 
         strVal = if type = "string" then vec[r]
@@ -818,7 +839,7 @@ Class "df" (tbl)
     if TypeOf(cols) <> "array" then Throw("unite: `cols` must be an array")
 
     for c = 1 to cols.length do
-      col = cols[c]
+      col = self.check_name(cols[c])
 
       vec = self.tbl.(col)
       vec = if (vec.type = "string")
@@ -1001,7 +1022,7 @@ Class "df" (tbl)
     // Combine tables
     final = null
     for i = 1 to col1.length do
-      col_name = col1[i]
+      col_name = self.check_name(col1[i])
 
       a1 = V2A(self.tbl.(col_name))
       a2 = V2A(df.tbl.(col_name))
@@ -1058,6 +1079,12 @@ Macro "test"
     if df.tbl.addition[a] <> answer[a] then Throw("test: mutate failed")
   end
 
+  // test check_name
+  name = "length"
+  df = CreateObject("df")
+  name = df.check_name(name)
+  if name <> "[length]" then Throw("test: check_name failed")
+
   // test colnames
   df = CreateObject("df")
   df.read_mtx(mtx_file)
@@ -1090,7 +1117,7 @@ Macro "test"
   df = CreateObject("df")
   df.read_csv(test_csv)
   DeleteFile(test_csv)
-  if df.ncol() <> 3 then Throw("test: write_csv failed")
+  if df.ncol() <> 4 then Throw("test: write_csv failed")
 
   // test read_mtx
   df = CreateObject("df")
@@ -1171,7 +1198,7 @@ Macro "test"
   df = CreateObject("df")
   df.read_csv(csv_file)
   df.spread("Color", "Count", 0)
-  if df.tbl[2][1] <> "Blue" then Throw("test: spread() failed")
+  if df.tbl[3][1] <> "Blue" then Throw("test: spread() failed")
   answer = {0, 115, 25}
   for a = 1 to answer.length do
     if df.tbl.Blue[a] <> answer[a] then Throw("test: spread() failed")
@@ -1181,7 +1208,7 @@ Macro "test"
   df.read_csv(csv_file)
   df.mutate("arbitrary", {1, 2, 3, 4, 5, 6})
   df.spread("Color", "Count", 0)
-  if df.tbl[3][1] <> "Blue" then Throw("test: spread() failed")
+  if df.tbl[4][1] <> "Blue" then Throw("test: spread() failed")
   answer = {0, 0, 115, 0, 0, 25}
   for a = 1 to answer.length do
     if df.tbl.Blue[a] <> answer[a] then Throw("test: spread() failed")
