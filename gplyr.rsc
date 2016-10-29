@@ -330,9 +330,7 @@ Class "df" (tbl)
       if TypeOf(fields) = "vector" then fields = V2A(fields)
       if TypeOf(fields) <> "array"
         then Throw("read_view: 'fields' must be string, vector, or array")
-    end
-
-    if fields = null then do
+    end else do
       fields = GetFields(view, )
       fields = fields[1]
     end
@@ -352,6 +350,56 @@ Class "df" (tbl)
       self.tbl.(field) = GetDataVector(view + "|" + set, field, )
     end
     self.check()
+  EndItem
+
+  /*
+  This macro takes data from a data frame and puts it into a view.  Columns
+  are created if necessary.
+
+  MacroOpts
+    view
+      String
+      TC view name
+    set
+      Optional string
+      set name
+    fields
+      Optional string or array/vector of strings
+      Array/Vector of columns to read. If null, all df columns are written.
+  */
+
+  Macro "fill_view" (MacroOpts) do
+
+    view = MacroOpts.view
+    set = MacroOpts.set
+    fields = MacroOpts.fields
+
+    // Check for required arguments and
+    // that data frame is currently empty
+    if self.is_empty() then Throw("fill_view: data frame is empty")
+    if view = null
+      then Throw("fill_view: Required argument 'view' missing.")
+    if fields <> null then do
+      if TypeOf(fields) = "string" then fields = {fields}
+      if TypeOf(fields) = "vector" then fields = V2A(fields)
+      if TypeOf(fields) <> "array"
+        then Throw("fill_view: 'fields' must be string, vector, or array")
+    end else do
+      fields = self.colnames()
+    end
+
+    for f = 1 to fields.length do
+      field = fields[f]
+
+      if self.tbl.(field).type = "integer" then type = "Integer"
+      else if self.tbl.(field).type = "string" then type = "Character"
+      else type = "Real"
+
+      a_fields =  {{field, type, 8, 2,,,, ""}}
+      RunMacro("TCB Add View Fields", {vw, a_fields})
+
+      SetDataVector(view + "|" + set, field, self.tbl.(field), )
+    end
   EndItem
 
   /*
